@@ -9,39 +9,54 @@ from bot.services import db_control
 
 
 class AdminMenuState(StatesGroup):
-    edit_model_name = State()
-    del_model_name = State()
-    add_notification = State()
+    edit_notification = State()
     del_notification = State()
+    notification_on = State()
+    notification_off = State()
     add_user = State()
     del_user = State()
 
 
-async def edit_model_name_handler(callback_query: types.CallbackQuery, state: FSMContext):
+async def edit_email_name_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    models = db_control.get_all_emails()
+
+    text = 'Введи почту и ник модели.\n' \
+           'Пример: somemail@mail.ru Eva\n'
+
+    if len(models) > 0:
+        text += '\n\n Доступные уведомления:\n\n'
+        for email, name in models:
+            text += f'-- {email} {name}\n'
+
     await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                 message_id=callback_query.message.message_id,
-                                text='Введи почту и ник модели.\n'
-                                     'Пример: somemail@mail.ru Eva\n',
+                                text=text,
                                 reply_markup=keyboards.del_model_name_menu)
 
     await state.update_data(message_id=callback_query.message.message_id,
                             count_add_model=0)
-    await AdminMenuState.edit_model_name.set()
+    await AdminMenuState.edit_notification.set()
 
 
-async def send_del_model_name_keyboard(callback_query: types.CallbackQuery):
-    await callback_query.message.answer('Выбери модель для удаления:',
-                                        reply_markup=keyboards.create_models_keyboard())
-    await AdminMenuState.del_model_name.set()
+async def send_del_email_name_keyboard(callback_query: types.CallbackQuery):
+    keyboard = keyboards.create_models_keyboard()
+    if not keyboard["keyboard"]:
+        await callback_query.answer('Нет доступных уведомлений')
+
+    else:
+        await callback_query.message.answer('Выбери уведомление для удаления из списка уведомлений:',
+                                            reply_markup=keyboards.create_models_keyboard())
+        await AdminMenuState.del_notification.set()
 
 
-async def del_model_name_handler(message: types.Message):
+async def del_email_name_handler(message: types.Message):
     model = message.text.split()[0]
-    db_control.del_model(model)
+    db_control.del_email(model)
+    await message.answer('Уведомление удалено')
 
 
 # Запись в таблицу models
-async def write_model_to_db(message: types.Message, state: FSMContext):
+async def write_email_to_db(message: types.Message, state: FSMContext):
     data = await state.get_data()
     message_id = data.get('message_id')
     counter = 1
@@ -55,18 +70,18 @@ async def write_model_to_db(message: types.Message, state: FSMContext):
 
     if re.match(pattern, model_email):
 
-        db_control.add_model(model_email, model_name)
+        db_control.add_email(model_email, model_name)
         await bot.edit_message_text(chat_id=message.chat.id,
                                     message_id=message_id,
                                     text='Введи почту и ник модели.\n'
                                          'Пример: somemail@mail.ru Eva\n\n\n'
-                                         f'Модель добавлена или изменена ({counter})',
+                                         f'Уведомление добавлено в список доступных или изменено ({counter})',
                                     reply_markup=keyboards.close_menu)
         await state.update_data(count_add_model=counter)  # Обновляем счётчик добавленных моделей
     else:
         await bot.edit_message_text(chat_id=message.chat.id,
                                     message_id=message_id,
-                                    text='Введи почту и ник модели.\n'
+                                    text='Введи почту и название оповещения.\n'
                                          'Пример: somemail@mail.ru Eva\n\n\n'
                                          'Не корректные данные',
                                     reply_markup=keyboards.close_menu)
@@ -113,7 +128,6 @@ async def del_user_access(message: types.Message, state: FSMContext):
     user_name = ' '.join(user_data[1:]).replace('/', '')
 
     if db_control.check_user_access(user_id):
-        print(user_id)
         db_control.del_user(user_id)
         await bot.edit_message_text(chat_id=message.chat.id,
                                     message_id=message_id,
@@ -137,19 +151,22 @@ async def send_users_buttons(callback_query: types.CallbackQuery):
 # Отправляем клаву с никами моделей
 async def send_models_buttons(callback_query: types.CallbackQuery):
     models_buttons = keyboards.create_models_keyboard()
-    await callback_query.message.answer(reply_markup=models_buttons, text='Модели:')
+    if not models_buttons['keyboard']:
+        await callback_query.answer('Нет доступных уведомлений')
+    else:
+        await callback_query.message.answer(reply_markup=models_buttons, text='Уведомления:')
 
 
 def register_main_admin_handlers(dp: Dispatcher):
-    dp.register_callback_query_handler(edit_model_name_handler, lambda c: c.data == 'button_edit_model_name_menu')
-    dp.register_message_handler(write_model_to_db, state=AdminMenuState.edit_model_name)
+    dp.register_callback_query_handler(edit_email_name_handler, lambda c: c.data == 'button_edit_model_name_menu')
+    dp.register_message_handler(write_email_to_db, state=AdminMenuState.edit_notification)
     dp.register_callback_query_handler(send_models_buttons, lambda c: c.data == 'button_show_models', state='*')
     dp.register_callback_query_handler(send_users_buttons, lambda c: c.data == 'button_show_users', state='*')
     dp.register_callback_query_handler(add_user_menu, lambda c: c.data == 'button_add_user_menu')
     dp.register_message_handler(add_user_access, state=AdminMenuState.add_user)
     dp.register_callback_query_handler(del_user_menu, lambda c: c.data == 'button_del_user_menu')
     dp.register_message_handler(del_user_access, state=AdminMenuState.del_user)
-    dp.register_callback_query_handler(send_del_model_name_keyboard,
+    dp.register_callback_query_handler(send_del_email_name_keyboard,
                                        lambda c: c.data == 'button_del_model_name_keyboard',
                                        state='*')
-    dp.register_message_handler(del_model_name_handler, state=AdminMenuState.del_model_name)
+    dp.register_message_handler(del_email_name_handler, state=AdminMenuState.del_notification)

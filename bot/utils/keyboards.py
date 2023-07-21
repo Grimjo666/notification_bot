@@ -1,5 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from bot.services.db_control import get_all_models, get_all_users
+from bot.services.db_control import get_all_emails, get_all_users
 from bot.services import db_control
 
 # Основные кнопки
@@ -14,9 +14,9 @@ close_menu.add(button_main_menu, button_close)
 
 main_admin_menu = InlineKeyboardMarkup(row_width=1)
 
-button_edit_model_name = InlineKeyboardButton('Редактировать ник модели', callback_data='button_edit_model_name_menu')
-button_add_notification = InlineKeyboardButton('Добавить оповещение', callback_data='button_add_notification_menu')
-button_del_notification = InlineKeyboardButton('Убрать оповещение', callback_data='button_del_notification_menu')
+button_edit_model_name = InlineKeyboardButton('Редактировать список уведомлений', callback_data='button_edit_model_name_menu')
+button_add_notification = InlineKeyboardButton('Добавить уведомление', callback_data='button_add_notification_menu')
+button_del_notification = InlineKeyboardButton('Убрать уведомление', callback_data='button_del_notification_menu')
 button_add_user_to_bot = InlineKeyboardButton('Дать доступ к боту', callback_data='button_add_user_menu')
 button_del_access_from_bot = InlineKeyboardButton('Убрать доступ', callback_data='button_del_user_menu')
 
@@ -35,13 +35,13 @@ admin_menu.add(button_add_notification, button_del_notification, button_close)
 
 del_model_name_menu = InlineKeyboardMarkup(row_width=1)
 
-button_del_model_name_keyboard = InlineKeyboardButton('Удалить модель', callback_data='button_del_model_name_keyboard')
+button_del_model_name_keyboard = InlineKeyboardButton('Удалить уведомление', callback_data='button_del_model_name_keyboard')
 
 del_model_name_menu.add(button_del_model_name_keyboard, button_main_menu, button_close)
 
 
 def create_models_keyboard():
-    models = get_all_models()
+    models = get_all_emails()
     keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
     if models is not None:
         for model in models:
@@ -60,11 +60,11 @@ def create_users_keyboard():
 
 
 def create_notification_keyboard(user_id):
-    notifications = db_control.get_all_user_model_notification(user_id)
+    notifications = db_control.get_all_user_email_notification(user_id)
     if len(notifications) > 0:
         keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
         for ntf in notifications:
-            name = db_control.get_model_name(ntf[0])[0]
+            name = db_control.get_email_name(ntf[0])[0]
             button = KeyboardButton(f'{ntf[0]} / {name}')
             keyboard.add(button)
         return keyboard
@@ -73,8 +73,8 @@ def create_notification_keyboard(user_id):
 
 notification_menu = InlineKeyboardMarkup(row_width=1)
 
-button_show_models = InlineKeyboardButton('Показать доступных моделей', callback_data='button_show_models')
-button_add_all = InlineKeyboardButton('Добавить всех', callback_data='button_add_all_notification')
+button_show_models = InlineKeyboardButton('Показать доступные уведомления', callback_data='button_show_models')
+button_add_all = InlineKeyboardButton('Добавить все уведомления', callback_data='button_add_all_notification')
 
 notification_menu.add(button_show_models, button_add_all, button_main_menu, button_close)
 
