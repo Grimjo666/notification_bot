@@ -5,7 +5,7 @@ import re
 
 from bot.utils import keyboards
 from bot.create_bot import bot
-from bot.services import db_control
+
 
 
 class AdminMenuState(StatesGroup):

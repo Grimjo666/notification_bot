@@ -3,19 +3,28 @@ import email
 from bot import config
 
 
-def filter_string(string, str_in, str_not_in):
-    # Общая функция для проверки строк
-    return (str_in is None or str_in.lower() in string.lower()) and (str_not_in is None or str_not_in.lower() not in string.lower())
+def subject_filter(subject: str, message_notifications: int, purchase_notifications: int, other_notifications: int) -> bool:
+    if message_notifications == 1 and 'message' in subject:
+        return False
+    elif purchase_notifications == 1 and any(word in subject for word in ('purchase', '$', 'renewed')):
+        return False
+    elif other_notifications == 1:
+        return False
+    else:
+        return True
 
 
-def sender_filter(sender, str_in, str_not_in):
-    # Функция для фильтрации отправителя по ключевым словам.
-    return isinstance(sender, str) and filter_string(sender, str_in, str_not_in)
-
-
-def subject_filter(subject, str_in, str_not_in):
-    # Функция для фильтрации темы сообщения по ключевым словам.
-    return isinstance(subject, str) and filter_string(subject, str_in, str_not_in)
+def is_valid_imap_credentials(user_email, password):
+    try:
+        # Подключаемся к IMAP-серверу с предоставленными данными
+        imap = imaplib.IMAP4_SSL('imap.example.com')
+        imap.login(user_email, password)
+        imap.logout()
+        return True
+    except imaplib.IMAP4.error as e:
+        # Обрабатываем ошибку в случае неверных данных
+        print(f"Ошибка: {e}")
+        return False
 
 
 def get_new_message(username, mail_pass) -> list:
@@ -46,14 +55,13 @@ def get_new_message(username, mail_pass) -> list:
 
             sender = email_message['From']
 
-            # Фильтрация сообщений по отправителю
-            if not sender_filter(sender, config.KEYWORD_IN_SENDER, config.KEYWORD_NOT_IN_SENDER):
+            if 'fansly' not in sender.lower():
                 continue
 
             # Извлечение заголовка
             subject = email_message['Subject']
 
-            if not subject_filter(subject, config.KEYWORD_IN_SUBJECT, config.KEYWORD_NOT_IN_SUBJECT):
+            if 'your code is' in subject.lower():
                 continue
 
             recipient = email_message['To']

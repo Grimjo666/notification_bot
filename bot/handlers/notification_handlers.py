@@ -4,7 +4,7 @@ from aiogram.dispatcher import FSMContext
 from bot.utils import keyboards
 from bot.create_bot import bot
 from bot.services import db_control
-from bot.handlers.admin_handlers import AdminMenuState
+from bot.handlers.admin_menu_handlers import AdminMenuState
 from data.create_db import create_table_notifications
 
 
