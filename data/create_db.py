@@ -1,5 +1,4 @@
 import sqlite3
-import bcrypt
 
 
 def create_database():
@@ -23,7 +22,7 @@ def create_database():
                         email_password TEXT,
                         subscription_type TEXT,
                         subscription_status TEXT,
-                        subscription_expiration_date,
+                        subscription_expiration_date TEXT,
                         number_of_available_users INTEGER,
                         number_of_available_emails INTEGER,
                         FOREIGN KEY (user_id) REFERENCES buy_requests (user_id)

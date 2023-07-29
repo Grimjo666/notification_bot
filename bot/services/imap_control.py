@@ -16,14 +16,13 @@ def subject_filter(subject: str, message_notifications: int, purchase_notificati
 
 def is_valid_imap_credentials(user_email, password):
     try:
+        imap_server = config.IMAP_SERVER
         # Подключаемся к IMAP-серверу с предоставленными данными
-        imap = imaplib.IMAP4_SSL('imap.example.com')
+        imap = imaplib.IMAP4_SSL(imap_server)
         imap.login(user_email, password)
         imap.logout()
         return True
-    except imaplib.IMAP4.error as e:
-        # Обрабатываем ошибку в случае неверных данных
-        print(f"Ошибка: {e}")
+    except:
         return False
 
 
