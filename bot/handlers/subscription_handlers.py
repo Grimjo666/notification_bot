@@ -102,6 +102,8 @@ async def get_user_email_credentials(message: types.Message, state: FSMContext):
                                          'Для того что бы настроить уведомления перейдите в '
                                          'Основное меню -> Аккаунт',
                                     reply_markup=keyboards.close_menu)
+        
+        db.close()
     else:
         await message.answer('Не корректные данные')
 
