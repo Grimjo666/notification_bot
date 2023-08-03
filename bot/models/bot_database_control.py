@@ -107,6 +107,13 @@ class BotDataBase:
         accounts = self.cursor.fetchall()
         return accounts
 
+    # Проверяем существует ли аккаунт
+    def check_account_exist(self, user_id):
+        self.cursor.execute('''SELECT COUNT(*) FROM bot_accounts WHERE user_id = ?''', (user_id,))
+        account_exist = self.cursor.fetchone()[0]
+
+        return account_exist > 0
+
     # Добавляем доступ к аккаунту для нового телеграм-пользователя
     def add_authorized_user(self, user_id, user_name, email_login, message_notifications=1,
                             purchase_notifications=1, other_notifications=1, is_chat=0):
@@ -198,6 +205,19 @@ class BotDataBase:
         else:
             return None
 
+    # Получаем все зарегистрированные уведомления аккаунта
+    def get_account_notifications(self, email_login):
+        self.cursor.execute('''SELECT * FROM account_notifications WHERE email_login = ?''', (email_login,))
+        notifications = self.cursor.fetchall()
+
+        return notifications
+
+    def get_email_login_by_user_id(self, user_id):
+        self.cursor.execute('''SELECT email_login FROM bot_accounts WHERE user_id = ?''', (user_id,))
+        email_login = self.cursor.fetchone()[0]
+
+        return email_login
+
     # Получаем имя уведомления
     def get_notification_name(self, notification_id):
         self.cursor.execute('''SELECT notification_name FROM account_notifications WHERE notification_id = ?''',
@@ -252,7 +272,6 @@ class BotDataBase:
         if is_filtered is not None:
             return bool(is_filtered[0])
         return True
-
 
     # Получаем информацию о пользователях из authorized_users
     def get_users_from_authorized_users(self, email_login):

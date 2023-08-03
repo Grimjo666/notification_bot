@@ -12,7 +12,7 @@ from bot.services.imap_control import get_new_message
 from bot.config import EMAIL_PASS, EMAIL_USERNAME
 
 from bot.create_bot import dp, bot
-from bot.handlers import main_menu_handlers, subscription_handlers
+from bot.handlers import main_menu_handlers, subscription_handlers, account_menu_handlers
 from data.create_db import create_database
 from bot.utils import keyboards
 
@@ -46,6 +46,7 @@ if not os.path.exists('data/bot_data.db'):
 
 main_menu_handlers.register_main_menu_handlers(dp)
 subscription_handlers.register_subscription_handlers(dp)
+account_menu_handlers.register_account_handlers(dp)
 
 # @dp.message_handler(commands=['start', 'menu'])
 # async def command_admin_menu(message: types.Message):

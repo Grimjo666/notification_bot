@@ -49,6 +49,34 @@ paid_subscription_menu.add(button_base_subscription,
                            button_close)
 
 
+account_menu = InlineKeyboardMarkup(row_width=1)
+
+button_edit_notification_name = InlineKeyboardButton('Изменить имя уведомления', callback_data='button_edit_notification_name')
+button_add_user_to_account = InlineKeyboardButton('Добавить пользователя в аккаунт', callback_data='button_add_user_to_account')
+button_del_user_from_account = InlineKeyboardButton('Удалить пользователя из аккаунта', callback_data='button_del_user_from_account')
+
+
+account_menu.add(button_edit_notification_name,
+                 button_add_user_to_account,
+                 button_del_user_from_account,
+                 button_main_menu,
+                 button_close)
+
+
+notification_menu = InlineKeyboardMarkup(row_width=1)
+
+button_switch_notifications = InlineKeyboardButton('Включить/выключить уведомления', callback_data='button_switch_notifications')
+button_add_filters = InlineKeyboardButton('Добавить фильтры на уведомления', callback_data='button_add_filters')
+
+notification_menu.add(button_switch_notifications, button_add_filters, button_main_menu, button_close)
+
+
+transition_account_menu = InlineKeyboardMarkup(row_width=1)
+
+button_notification_menu = InlineKeyboardButton('Управление личными уведомлениями', callback_data='button_notification_menu')
+button_account_menu_control = InlineKeyboardButton('Управление аккаунтом', callback_data='button_account_menu_control')
+
+transition_account_menu.add(button_notification_menu, button_account_menu_control, button_main_menu, button_close)
 
 # def create_models_keyboard():
 #     models = get_all_emails()
