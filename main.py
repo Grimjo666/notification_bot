@@ -16,6 +16,8 @@ from bot.handlers import main_menu_handlers, subscription_handlers
 from data.create_db import create_database
 from bot.utils import keyboards
 
+from bot.services import background_tasks
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 # logging.basicConfig(level=logging.ERROR,
@@ -70,34 +72,6 @@ async def test(message: types):
     raise Exception("Тестовая ошибка")
 
 
-# async def check_messages_background_task():
-#     while True:
-#         messages = get_new_message(username=EMAIL_USERNAME, mail_pass=EMAIL_PASS)
-#         if len(messages) > 0:
-#             for subject, recipient, text in messages:
-#                 model_name = None
-#                 try:
-#                     model_name = db_control.get_email_name(recipient)[0]
-#                 except:
-#                     pass
-#                 if model_name:
-#                     text = f'---\nМодель: {model_name}\n\nТема: {subject}\n---'
-#                 else:
-#                     text = f'Модель: {recipient}\n\nТема: {subject}\n\n'
-#
-#                 for user in db_control.get_all_users():
-#                     # Проверяем фильтр уведомлений пользователя
-#                     if db_control.check_user_email_notification(user_id=user[0],
-#                                                                 email=recipient.strip()):
-#                         try:
-#                             await bot.send_message(chat_id=user[0], text=text)
-#                         except aiogram_exceptions.RetryAfter as e:
-#                             await asyncio.sleep(e.timeout)
-#                             await bot.send_message(chat_id=user[0], text=text)
-#
-#         await asyncio.sleep(30)
-
-
 # Хэндлер для закрытия меню
 @dp.callback_query_handler(lambda c: c.data == 'button_close', state='*')
 async def close_handler(callback_query: types.CallbackQuery, state: FSMContext):
@@ -107,25 +81,8 @@ async def close_handler(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
 
 
-@dp.callback_query_handler(lambda c: c.data == 'button_main_menu', state='*')
-async def send_main_menu(callback_query: types.CallbackQuery, state: FSMContext):
-    match callback_query.message.chat.type, callback_query.from_user.id:
-        case _, 888175079 | 491324681 | 1452171281:
-            await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                        message_id=callback_query.message.message_id,
-                                        text='Админ-меню (расширенное):',
-                                        reply_markup=keyboards.main_menu)
-
-        case 'private', _:
-            await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                        message_id=callback_query.message.message_id,
-                                        text='Админ-меню:',
-                                        reply_markup=keyboards.admin_menu)
-
-    await state.finish()
-
 if __name__ == '__main__':
-    # loop = asyncio.get_event_loop()
-    #
-    # loop.create_task(check_messages_background_task())
+    loop = asyncio.get_event_loop()
+
+    loop.create_task(background_tasks.add_new_notification_and_send())
     executor.start_polling(dp, skip_updates=True)

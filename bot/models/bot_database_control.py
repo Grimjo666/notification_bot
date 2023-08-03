@@ -1,6 +1,7 @@
 import sqlite3
-import bcrypt
 from datetime import datetime, timedelta
+from cryptography.fernet import Fernet
+from bot import config
 
 
 class DBErrors(Exception):
@@ -10,31 +11,47 @@ class DBErrors(Exception):
 
 
 class BotDataBase:
+    __encryption_key = config.ENCRYPTION_KEY
 
     def __init__(self):
         self.conn = sqlite3.connect('data/bot_data.db')
         self.cursor = self.conn.cursor()
 
+    # Функция для шифрования пароля
+    def encrypt_password(self, password):
+        encryption_key = self.__encryption_key
+
+        # Преобразуем ключ в байтовый формат, так как Fernet принимает только байтовые ключи
+        key = encryption_key.encode('utf-8')
+
+        # Создаем объект Fernet с использованием ключа
+        fernet = Fernet(key)
+
+        # Шифруем пароль
+        encrypted_password = fernet.encrypt(password.encode('utf-8'))
+
+        # Возвращаем зашифрованный пароль в байтовом формате
+        return encrypted_password
+
+    # Функция для расшифровки пароля
+    def decrypt_password(self, encrypted_password):
+        encryption_key = self.__encryption_key
+        # Преобразуем ключ в байтовый формат, так как Fernet принимает только байтовые ключи
+        key = encryption_key.encode('utf-8')
+
+        # Создаем объект Fernet с использованием ключа
+        fernet = Fernet(key)
+
+        # Расшифровываем пароль
+        decrypted_password = fernet.decrypt(encrypted_password).decode('utf-8')
+
+        # Возвращаем расшифрованный пароль в виде строки
+        return decrypted_password
+
     @staticmethod
-    def hash_password(password) -> str:
-        # Генерируем соль (случайное значение)
-        salt = bcrypt.gensalt()
-
-        # Хешируем пароль с использованием соли
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-
-        # Преобразуем хеш в строку для сохранения в базу данных
-        return hashed_password.decode('utf-8')
-
-    @staticmethod
-    def check_password(password, hashed_password) -> bool:
-        # Проверяем, соответствует ли хеш заданному паролю
-        return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
-
-    # Удаляем запись из переданной таблицы по user_id
-    def del_from_table_by_user_id(self, user_id, table_name):
-        self.cursor.execute(f'''DELETE FROM {table_name} WHERE user_id = ?''', (user_id,))
-        self.conn.commit()
+    def generate_encryption_key():
+        # Генерируем случайный ключ для шифрования
+        return Fernet.generate_key()
 
     # Добавляем запрос на регистрацию аккаунта в БД
     def add_buy_request(self, user_id, user_name, email_login, email_password, subscription_type):
@@ -84,9 +101,15 @@ class BotDataBase:
                              number_of_available_users, number_of_available_emails, user_id))
         self.conn.commit()
 
+    # Получаем информацию об аккаунтах из бд
+    def get_accounts(self):
+        self.cursor.execute('''SELECT * FROM bot_accounts''')
+        accounts = self.cursor.fetchall()
+        return accounts
+
     # Добавляем доступ к аккаунту для нового телеграм-пользователя
     def add_authorized_user(self, user_id, user_name, email_login, message_notifications=1,
-                            purchase_notifications=1, other_notifications=1):
+                            purchase_notifications=1, other_notifications=1, is_chat=0):
         # Получаем количество доступных пользователей и добавленных пользователей к аккаунту
         self.cursor.execute('''SELECT number_of_available_users, COUNT(*) FROM bot_accounts 
                                        LEFT JOIN authorized_users USING(email_login)
@@ -105,10 +128,11 @@ class BotDataBase:
                                                                 message_notifications,
                                                                 purchase_notifications,
                                                                 other_notifications,
+                                                                is_chat,
                                                                 email_login)
-                                                                VALUES (?, ?, ?, ?, ?, ?)''',
+                                                                VALUES (?, ?, ?, ?, ?, ?, ?)''',
                                 (user_id, user_name, message_notifications,
-                                 purchase_notifications, other_notifications, email_login))
+                                 purchase_notifications, other_notifications, is_chat, email_login))
             self.conn.commit()
         else:
             raise DBErrors('Вы не можете дать доступ новому пользователю\n'
@@ -129,7 +153,7 @@ class BotDataBase:
         self.conn.commit()
 
     # Добавляем email-уведомление в аккаунт
-    def add_account_notification(self, message_email, notification_name, email_login):
+    def add_account_notification(self, email_recipient, email_login, notification_name='None'):
         # Получаем количество доступных email-адресов в аккаунте
         self.cursor.execute('''SELECT number_of_available_emails, COUNT(*) FROM bot_accounts 
                                LEFT JOIN account_notifications USING(email_login)
@@ -141,15 +165,48 @@ class BotDataBase:
 
         count_available_emails, count_account_notifications = result
 
-        # Если количество доступных email-адресов превышает количество добавленных уведомлений, добавляем новую запись
+        # Если количество доступных email-адресов не превышает количество добавленных уведомлений,
+        # добавляем новые записи
         if count_available_emails > count_account_notifications:
-            self.cursor.execute('''INSERT INTO account_notifications (message_email, notification_name, email_login)
-                                    VALUES (?, ?, ?)''', (message_email, notification_name, email_login))
-            self.conn.commit()
+            try:
+                # Проверяем, существует ли запись с данным email_login и email_recipients
+                # Если такой комбинации email_login и email_recipient нет, добавляем новую запись
+                if self.get_notification_id(email_login=email_login, email_recipient=email_recipient) is None:
+                    self.cursor.execute('''INSERT INTO account_notifications (email_recipient, notification_name, email_login)
+                                         VALUES (?, ?, ?)''', (email_recipient, notification_name, email_login))
+                    count_account_notifications += 1
+
+                # Выполняем коммит транзакции после всех операций добавления записей в таблицу
+                self.conn.commit()
+
+            except sqlite3.IntegrityError as e:
+                raise DBErrors('Ошибка при добавлении нового уведомления: ' + str(e))
+
         else:
             raise DBErrors('Вы не можете добавить новое уведомление\n'
                            f'Доступных email-адресов:{count_available_emails}\n'
                            f'Добавленных уведомлений:{count_account_notifications}')
+
+    # Получаем notification_id
+    def get_notification_id(self, email_login, email_recipient):
+        self.cursor.execute(
+            '''SELECT notification_id FROM account_notifications WHERE email_login = ? AND email_recipient = ?''',
+            (email_login, email_recipient))
+        result = self.cursor.fetchone()
+        if result is not None:
+            return result[0]
+        else:
+            return None
+
+    # Получаем имя уведомления
+    def get_notification_name(self, notification_id):
+        self.cursor.execute('''SELECT notification_name FROM account_notifications WHERE notification_id = ?''',
+                            (notification_id,))
+        notification_name = self.cursor.fetchone()
+
+        if notification_name:
+            return notification_name[0]
+        return False
 
     # Проверяем, есть ли уведомление в базе данных
     def check_notification_exist(self, notification_id):
@@ -176,6 +233,38 @@ class BotDataBase:
 
         else:
             raise DBErrors('Не возможно изменить имя уведомления, уведомления не существует ')
+
+    # Проверяем есть ли уведомление в базе данных у пользователя
+    def check_user_notification_exist(self, notification_id, user_id):
+        try:
+            self.cursor.execute('''SELECT * FROM users_notifications WHERE notification_id = ? AND user_id = ?''',
+                                (notification_id, user_id))
+            result = self.cursor.fetchone()
+            return result is not None
+        except Exception as e:
+            print("Error:", e)
+            return False
+
+    def check_user_notification_filtered(self, user_id, notification_id):
+        self.cursor.execute('''SELECT is_filtered FROM users_notifications WHERE notification_id = ? AND user_id = ?''',
+                            (notification_id, user_id))
+        is_filtered = self.cursor.fetchone()
+        if is_filtered is not None:
+            return bool(is_filtered[0])
+        return True
+
+
+    # Получаем информацию о пользователях из authorized_users
+    def get_users_from_authorized_users(self, email_login):
+        self.cursor.execute('''SELECT * FROM authorized_users WHERE email_login = ?''', (email_login,))
+        users = self.cursor.fetchall()
+        return users
+
+    # Добавляем уведомление пользователю
+    def add_notification_to_users_notifications(self, notification_id, user_id, is_filtered=0):
+        self.cursor.execute('''INSERT INTO users_notifications (notification_id, user_id, is_filtered) VALUES (?, ?, ?)''',
+                            (notification_id, user_id, is_filtered))
+        self.conn.commit()
 
     # Проверяем, есть ли пользователь в базе данных
     def check_user_exist(self, user_id):

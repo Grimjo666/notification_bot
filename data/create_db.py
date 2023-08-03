@@ -19,7 +19,7 @@ def create_database():
     cursor.execute('''CREATE TABLE IF NOT EXISTS bot_accounts (
                         user_id INTEGER PRIMARY KEY,
                         email_login TEXT,
-                        email_password TEXT,
+                        email_password BLOB,
                         subscription_type TEXT,
                         subscription_status TEXT,
                         subscription_expiration_date TEXT,
@@ -35,6 +35,7 @@ def create_database():
                         message_notifications INTEGER,
                         purchase_notifications INTEGER,
                         other_notifications INTEGER,
+                        is_chat INTEGER,
                         email_login TEXT,
                         FOREIGN KEY (email_login) REFERENCES bot_accounts (email_login) ON DELETE CASCADE
                     )''')
@@ -42,7 +43,7 @@ def create_database():
     # таблица для управления уведомлениями аккаунта
     cursor.execute('''CREATE TABLE IF NOT EXISTS account_notifications (
                         notification_id INTEGER PRIMARY KEY,
-                        message_email TEXT,
+                        email_recipient TEXT,
                         notification_name TEXT,
                         email_login TEXT,
                         FOREIGN KEY (email_login) REFERENCES bot_accounts (email_login) ON DELETE CASCADE
@@ -50,7 +51,7 @@ def create_database():
 
     # таблица для управлением уведомлений пользователя
     cursor.execute('''CREATE TABLE IF NOT EXISTS users_notifications (
-                        notification_id INTEGER PRIMARY KEY,
+                        notification_id INTEGER,
                         user_id INTEGER,
                         is_filtered INTEGER,
                         FOREIGN KEY (user_id) REFERENCES authorized_users (user_id) ON DELETE CASCADE,
@@ -67,8 +68,6 @@ def create_database():
     conn.commit()
     conn.close()
 
-
-create_database()
 
 # def hash_password(password):
 #     # Генерируем соль (случайное значение)

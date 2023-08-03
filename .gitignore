@@ -1,4 +1,6 @@
 bot_data.db
 .env
 .idea
+bot_output.log
+bot_errors.log
 __pycache__

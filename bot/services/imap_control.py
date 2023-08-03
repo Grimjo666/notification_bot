@@ -26,7 +26,7 @@ def is_valid_imap_credentials(user_email, password):
         return False
 
 
-def get_new_message(username, mail_pass) -> list:
+def get_new_message(email_address, email_pass) -> list:
     # Получаем логин и пароль от почты для парсинг по imap и возвращаем список с данными о сообщениях
 
     message_list = []
@@ -34,7 +34,7 @@ def get_new_message(username, mail_pass) -> list:
 
     # Подключение к серверу IMAP
     imap = imaplib.IMAP4_SSL(imap_server)
-    imap.login(username, mail_pass)
+    imap.login(email_address, email_pass)
 
     for elem in config.EMAIL_FOLDERS:
         # Выбор почтового ящика
@@ -54,8 +54,8 @@ def get_new_message(username, mail_pass) -> list:
 
             sender = email_message['From']
 
-            if 'fansly' not in sender.lower():
-                continue
+            # if 'fansly' not in sender.lower():
+            #     continue
 
             # Извлечение заголовка
             subject = email_message['Subject']
@@ -64,20 +64,8 @@ def get_new_message(username, mail_pass) -> list:
                 continue
 
             recipient = email_message['To']
-            text = ''
 
-            # Извлечение текста сообщения
-            if email_message.is_multipart():
-                # Если сообщение состоит из нескольких частей (multipart), ищем текстовую часть
-                for part in email_message.get_payload():
-                    if part.get_content_type() == 'text/plain':
-                        text = part.get_payload(decode=True).decode(part.get_content_charset())
-                        break
-            else:
-                # Если сообщение состоит из одной части, это может быть просто текстовое сообщение
-                text = email_message.get_payload(decode=True).decode(email_message.get_content_charset())
-
-            message_list.append((subject, recipient, text))
+            message_list.append((subject, recipient))
 
             # Отметка сообщения как прочитанного
             imap.store(num, '+FLAGS', '\\Seen')

@@ -74,7 +74,7 @@ async def get_user_email_credentials(message: types.Message, state: FSMContext):
     if len(message_data) == 2 and is_valid_imap_credentials(message_data[0], message_data[1]):
         db = BotDataBase()
         email_address, password = message_data
-        password = db.hash_password(password)
+        password = db.encrypt_password(password)
         subscription_expiration_date = db.get_free_subscription_expiration_date()
 
         user_id = message.from_user.id
