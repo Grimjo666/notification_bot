@@ -4,6 +4,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 # Основные кнопки
 button_close = InlineKeyboardButton('❌', callback_data='button_close')
 button_main_menu = InlineKeyboardButton('В основное меню', callback_data='button_main_menu')
+button_back = InlineKeyboardButton('Назад', callback_data='button_back')
+
+
+back_or_close_menu = InlineKeyboardMarkup(row_width=1)
+
+back_or_close_menu.add(button_back, button_main_menu, button_close)
 
 
 close_menu = InlineKeyboardMarkup(row_width=1)
@@ -77,6 +83,13 @@ button_notification_menu = InlineKeyboardButton('Управление личны
 button_account_menu_control = InlineKeyboardButton('Управление аккаунтом', callback_data='button_account_menu_control')
 
 transition_account_menu.add(button_notification_menu, button_account_menu_control, button_main_menu, button_close)
+
+
+del_user_access_menu = InlineKeyboardMarkup(row_width=1)
+
+button_show_users = InlineKeyboardButton('Выбрать пользователя', callback_data='button_show_users')
+
+del_user_access_menu.add(button_show_users, button_back, button_main_menu, button_close)
 
 # def create_models_keyboard():
 #     models = get_all_emails()

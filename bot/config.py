@@ -11,3 +11,4 @@ ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')
 EMAIL_FOLDERS = ('INBOX', 'INBOX/Newsletters')
 IMAP_SERVER = 'imap.mail.ru.'
 IMAP_CRITERIA = 'UNSEEN'
+

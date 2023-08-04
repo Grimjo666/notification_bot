@@ -69,5 +69,3 @@ async def send_message_with_delay(my_bot, user_id, text, delay_seconds):
     except aiogram_exceptions.RetryAfter as e:
         await asyncio.sleep(e.timeout)
         await send_message_with_delay(my_bot, user_id, text, delay_seconds)
-
-

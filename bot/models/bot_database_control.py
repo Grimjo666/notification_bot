@@ -143,8 +143,12 @@ class BotDataBase:
             self.conn.commit()
         else:
             raise DBErrors('Вы не можете дать доступ новому пользователю\n'
-                           f'Доступных аккаунтов телеграм:{count_available_accounts}\n'
-                           f'Действующих аккаунтов телеграм:{count_authorized_users}')
+                           f'Доступных аккаунтов телеграм: {count_available_accounts}\n'
+                           f'Действующих аккаунтов телеграм: {count_authorized_users}')
+
+    def del_authorized_user(self, user_id):
+        self.cursor.execute('''DELETE FROM authorized_users WHERE user_id = ?''', (user_id,))
+        self.conn.commit()
 
     # Переключаем состояние фильтров уведомлений пользователя, па умолчанию все включены(switch)
     def switch_filters_notifications(self, user_id, message_notifications=1, purchase_notifications=1,
