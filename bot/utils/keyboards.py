@@ -32,10 +32,10 @@ main_menu.add(button_subscribe_menu,
 free_subscription_menu = InlineKeyboardMarkup(row_width=1)
 
 button_get_free_subscription = InlineKeyboardButton('Получить пробную подписку', callback_data='button_get_free_subscription')
-button_paid_subscription_menu = InlineKeyboardButton('Пропустить', callback_data='button_paid_subscription_menu')
+button_skip_free = InlineKeyboardButton('Пропустить', callback_data='button_skip_free')
 
 free_subscription_menu.add(button_get_free_subscription,
-                           button_paid_subscription_menu,
+                           button_skip_free,
                            button_main_menu,
                            button_close)
 
@@ -90,6 +90,18 @@ del_user_access_menu = InlineKeyboardMarkup(row_width=1)
 button_show_users = InlineKeyboardButton('Выбрать пользователя', callback_data='button_show_users')
 
 del_user_access_menu.add(button_show_users, button_back, button_main_menu, button_close)
+
+
+payment_method_menu = InlineKeyboardMarkup(row_width=1)
+
+button_bank_transfer = InlineKeyboardButton('Оплата банковской картой', callback_data='button_bank_transfer')
+button_cripto_transfer = InlineKeyboardButton('Оплата криптовалютой', callback_data='button_cripto_transfer')
+
+payment_method_menu.add(button_bank_transfer,
+                        button_cripto_transfer,
+                        button_main_menu,
+                        button_close)
+
 
 # def create_models_keyboard():
 #     models = get_all_emails()
