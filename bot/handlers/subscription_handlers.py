@@ -16,23 +16,22 @@ class SubscriptionMenu(StatesGroup):
 
 # Присылаем пользователю меню выбора подписки
 async def send_subscribe_menu(callback_query: types.CallbackQuery, state: FSMContext):
-    db = BotDataBase()
-    user_exist = db.check_user_exist(callback_query.from_user.id)
-    keyboard = keyboards.paid_subscription_menu
-    text = 'Выберите тип подписки, которую вы хотите купить/продлить:'
+    async with BotDataBase() as db:
+        user_exist = db.check_user_exist(callback_query.from_user.id)
+        keyboard = keyboards.paid_subscription_menu
+        text = 'Выберите тип подписки, которую вы хотите купить/продлить:'
 
-    if not user_exist:
-        keyboard = keyboards.free_subscription_menu
-        text = 'Так как вы не разу ни пользовались ботом, вам доступна бесплатная пробная подписка на 2 дня'
-        await SubscriptionMenu.free_subscription.set()
-    else:
-        await SubscriptionMenu.paid_subscription.set()
-    await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                message_id=callback_query.message.message_id,
-                                text=text,
-                                reply_markup=keyboard)
-    await state.update_data(subscription_register_menu_id=callback_query.message.message_id)
-    db.close()
+        if not user_exist:
+            keyboard = keyboards.free_subscription_menu
+            text = 'Так как вы не разу ни пользовались ботом, вам доступна бесплатная пробная подписка на 2 дня'
+            await SubscriptionMenu.free_subscription.set()
+        else:
+            await SubscriptionMenu.paid_subscription.set()
+        await bot.edit_message_text(chat_id=callback_query.message.chat.id,
+                                    message_id=callback_query.message.message_id,
+                                    text=text,
+                                    reply_markup=keyboard)
+        await state.update_data(subscription_register_menu_id=callback_query.message.message_id)
 
 
 # Просим пользователя прислать адрес и пароль для IMAP
@@ -72,38 +71,37 @@ async def get_user_email_credentials(message: types.Message, state: FSMContext):
 
     # Проверяем отправленный пользователем емаил-адрес и пороль
     if len(message_data) == 2 and is_valid_imap_credentials(message_data[0], message_data[1]):
-        db = BotDataBase()
-        email_address, password = message_data
-        password = db.encrypt_password(password)
-        subscription_expiration_date = db.get_free_subscription_expiration_date()
+        async with BotDataBase() as db:
+            email_address, password = message_data
+            password = await db.encrypt_password(password)
+            subscription_expiration_date = await db.get_free_subscription_expiration_date()
 
-        user_id = message.from_user.id
-        user_name = message.from_user.full_name
+            user_id = message.from_user.id
+            user_name = message.from_user.full_name
 
-        # Создаём аккаунт пользователя в БД
-        db.add_bot_account(user_id=user_id,
-                           email_login=email_address,
-                           email_password=password,
-                           subscription_type='free',
-                           subscription_status='active',
-                           subscription_expiration_date=subscription_expiration_date)
+            # Создаём аккаунт пользователя в БД
+            await db.add_bot_account(user_id=user_id,
+                                     email_login=email_address,
+                                     email_password=password,
+                                     subscription_type='free',
+                                     subscription_status='active',
+                                     subscription_expiration_date=subscription_expiration_date)
 
-        # Добавляем пользователя в список авторизованных пользователей
-        db.add_authorized_user(user_id=user_id,
-                               user_name=user_name,
-                               email_login=email_address)
+            # Добавляем пользователя в список авторизованных пользователей
+            await db.add_authorized_user(user_id=user_id,
+                                         user_name=user_name,
+                                         email_login=email_address)
 
-        subscription_register_menu_id = data.get('subscription_register_menu_id')
-        await bot.edit_message_text(chat_id=message.chat.id,
-                                    message_id=subscription_register_menu_id,
-                                    text='Вы успешно зарегистрировались в боте.\n'
-                                         'Теперь вам будут приходить уведомления Fansly'
-                                         ' c вашей почты\n'
-                                         'Для того что бы настроить уведомления перейдите в '
-                                         'Основное меню -> Аккаунт',
-                                    reply_markup=keyboards.close_menu)
-        
-        db.close()
+            subscription_register_menu_id = data.get('subscription_register_menu_id')
+            await bot.edit_message_text(chat_id=message.chat.id,
+                                        message_id=subscription_register_menu_id,
+                                        text='Вы успешно зарегистрировались в боте.\n'
+                                             'Теперь вам будут приходить уведомления Fansly'
+                                             ' c вашей почты\n'
+                                             'Для того что бы настроить уведомления перейдите в '
+                                             'Основное меню -> Аккаунт',
+                                        reply_markup=keyboards.close_menu)
+
     else:
         await message.answer('Не корректные данные')
 

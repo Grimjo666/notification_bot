@@ -2,8 +2,8 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.utils.exceptions import ChatNotFound
 from sqlite3 import IntegrityError
-
 
 from bot.models.bot_database_control import BotDataBase, DBErrors
 from bot.utils import keyboards
@@ -18,26 +18,25 @@ class AccountMenu(StatesGroup):
 
 
 async def send_notification_and_transition_account_menu(callback_query: types.CallbackQuery):
-    db = BotDataBase()
-    user_id = callback_query.from_user.id
-    chat_id = callback_query.message.chat.id
-    message_id = callback_query.message.message_id
+    async with BotDataBase() as db:
+        user_id = callback_query.from_user.id
+        chat_id = callback_query.message.chat.id
+        message_id = callback_query.message.message_id
 
-    match db.check_account_exist(user_id), db.check_user_exist(user_id):
-        case True, True:
-            await bot.edit_message_text(chat_id=chat_id,
-                                        message_id=message_id,
-                                        text='Выберите меню:',
-                                        reply_markup=keyboards.transition_account_menu)
+        match await db.check_account_exist(user_id), await db.check_user_exist(user_id):
+            case True, True:
+                await bot.edit_message_text(chat_id=chat_id,
+                                            message_id=message_id,
+                                            text='Выберите меню:',
+                                            reply_markup=keyboards.transition_account_menu)
 
-        case False, True:
-            await bot.edit_message_text(chat_id=chat_id,
-                                        message_id=message_id,
-                                        text='Меню управления вашими личными уведомлениями:',
-                                        reply_markup=keyboards.notification_menu)
-        case False, False:
-            await bot.send_message(chat_id=chat_id, text='У вас нет доступа к боту, купите/продлите подписку.')
-    db.close()
+            case False, True:
+                await bot.edit_message_text(chat_id=chat_id,
+                                            message_id=message_id,
+                                            text='Меню управления вашими личными уведомлениями:',
+                                            reply_markup=keyboards.notification_menu)
+            case False, False:
+                await bot.send_message(chat_id=chat_id, text='У вас нет доступа к боту, купите/продлите подписку.')
 
 
 async def send_account_control_menu(callback_query: types.CallbackQuery, state: FSMContext):
@@ -45,43 +44,42 @@ async def send_account_control_menu(callback_query: types.CallbackQuery, state: 
     message_id = callback_query.message.message_id
     user_id = callback_query.from_user.id
 
-    db = BotDataBase()
-    email_login = db.get_email_login_by_user_id(user_id=user_id)
-    notifications = db.get_account_notifications(email_login=email_login)
-    users = db.get_users_from_authorized_users(email_login=email_login)
+    async with BotDataBase() as db:
+        email_login = await db.get_email_login_by_user_id(user_id=user_id)
+        notifications = await db.get_account_notifications(email_login=email_login)
+        users = await db.get_users_from_authorized_users(email_login=email_login)
 
-    text = 'Меню управления вашим аккаунтом\n\nУведомления аккаунта:\n'
+        text = 'Меню управления вашим аккаунтом\n\nУведомления аккаунта:\n'
 
-    notifications_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
-    users_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
+        notifications_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
+        users_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
 
-    if len(notifications) == 0:
-        text += 'У вас нет уведомлений'
+        if len(notifications) == 0:
+            text += 'У вас нет уведомлений'
 
-    for _, email_recipient, notification_name, _ in notifications:
-        if notification_name == 'None':
-            notification_name = 'Не задано'
-        text += f'--{email_recipient} | {notification_name}\n'
-        notifications_keyboard.add(KeyboardButton(f'{email_recipient} | {notification_name}'))
+        for _, email_recipient, notification_name, _ in notifications:
+            if notification_name == 'None':
+                notification_name = 'Не задано'
+            text += f'--{email_recipient} | {notification_name}\n'
+            notifications_keyboard.add(KeyboardButton(f'{email_recipient} | {notification_name}'))
 
-    text += '\nПользователи с доступом к боту:\n'
+        text += '\nПользователи с доступом к боту:\n'
 
-    for db_user_id, user_name, _, _, _, is_chat, _ in users:
-        if db_user_id == user_id:
-            text += f'--{user_name} <- ВЫ\n'
-        else:
-            text += f'--{user_name}\n'
-            users_keyboard.add(KeyboardButton(f'{db_user_id} | {user_name}'))
+        for db_user_id, user_name, _, _, _, is_chat, _ in users:
+            if db_user_id == user_id:
+                text += f'--{user_name} <- ВЫ\n'
+            else:
+                text += f'--{user_name}\n'
+                users_keyboard.add(KeyboardButton(f'{db_user_id} | {user_name}'))
 
-    await bot.edit_message_text(chat_id=chat_id,
-                                message_id=message_id,
-                                text=text,
-                                reply_markup=keyboards.account_menu)
+        await bot.edit_message_text(chat_id=chat_id,
+                                    message_id=message_id,
+                                    text=text,
+                                    reply_markup=keyboards.account_menu)
 
-    await state.update_data(notifications_keyboard=notifications_keyboard,
-                            users_keyboard=users_keyboard,
-                            email_login=email_login)
-    db.close()
+        await state.update_data(notifications_keyboard=notifications_keyboard,
+                                users_keyboard=users_keyboard,
+                                email_login=email_login)
 
 
 async def requests_notification_name_for_change(callback_query: types.callback_query, state: FSMContext):
@@ -101,35 +99,33 @@ async def requests_notification_name_for_change(callback_query: types.callback_q
 
 
 async def response_notification_name(message: types.Message, state: FSMContext):
-    db = BotDataBase()
-    data = await state.get_data()
-    email_recipient = message.text.split()[0]
-    email_login = data.get('email_login')
+    async with BotDataBase() as db:
+        data = await state.get_data()
+        email_recipient = message.text.split()[0]
+        email_login = data.get('email_login')
 
-    notification_id = db.get_notification_id(email_login=email_login, email_recipient=email_recipient)
-    if notification_id:
-        await message.answer('Теперь отправьте имя')
-        await state.update_data(notification_id=notification_id, message_id=message.message_id)
-        await AccountMenu.get_notification_name.set()
-    else:
-        await message.answer('Произошла ошибка')
+        notification_id = await db.get_notification_id(email_login=email_login, email_recipient=email_recipient)
 
-    db.close()
+        if notification_id:
+            await message.answer('Теперь отправьте имя')
+            await state.update_data(notification_id=notification_id, message_id=message.message_id)
+            await AccountMenu.get_notification_name.set()
+        else:
+            await message.answer('Произошла ошибка')
 
 
 async def edit_notification_name(message: types.Message, state: FSMContext):
-    db = BotDataBase()
-    data = await state.get_data()
-    notification_id = data.get('notification_id')
-    message_id = data.get('message_id')
+    async with BotDataBase() as db:
+        data = await state.get_data()
+        notification_id = data.get('notification_id')
+        message_id = data.get('message_id')
 
-    db.edit_account_notification_name(notification_id=notification_id, notification_name=message.text)
-    await message.answer('Имя успешно изменено')
+        await db.edit_account_notification_name(notification_id=notification_id, notification_name=message.text)
+        await message.answer('Имя успешно изменено')
 
-    await bot.delete_message(chat_id=message.chat.id, message_id=message_id)
-    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-    await state.finish()
-    db.close()
+        await bot.delete_message(chat_id=message.chat.id, message_id=message_id)
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await state.finish()
 
 
 # Добавляем доступ для пользователя к уведомлениям аккаунта
@@ -150,25 +146,25 @@ async def add_user_to_account(message: types.Message, state: FSMContext):
     await bot.delete_message(message_id=message.message_id, chat_id=message.chat.id)
 
     if user_id_add_access.isdigit():
-        db = BotDataBase()
-        try:
-            data = await state.get_data()
-            email_login = data.get('email_login')
-            user_info = await bot.get_chat(user_id_add_access)
-            user_name = user_info.full_name
-            db.add_authorized_user(user_id=user_id_add_access,
-                                   user_name=user_name,
-                                   email_login=email_login)
-            await message.answer('Пользователь добавлен')
-        except DBErrors as ex:
-            await message.answer(ex)
-        except IntegrityError as ex:
-            await message.answer('У этого пользователя уже есть доступ')
-        except Exception as ex:
-            print(type(ex), ex, 'Ошибка при добавлении нового пользователя')
-            await message.answer('Произошла ошибка')
-        finally:
-            db.close()
+        async with BotDataBase() as db:
+            try:
+                data = await state.get_data()
+                email_login = data.get('email_login')
+                user_info = await bot.get_chat(user_id_add_access)
+                user_name = user_info.full_name
+                await db.add_authorized_user(user_id=user_id_add_access,
+                                             user_name=user_name,
+                                             email_login=email_login)
+                await message.answer('Пользователь добавлен')
+            except DBErrors as ex:
+                await message.answer(ex.message)
+            except IntegrityError:
+                await message.answer('У этого пользователя уже есть доступ')
+            except ChatNotFound:
+                await message.answer('Пользователя с таким ID не существует')
+            except Exception as ex:
+                print(type(ex), ex, 'Ошибка при добавлении нового пользователя')
+                await message.answer('Произошла ошибка')
     else:
         await message.answer('Не корректный ID')
 
@@ -200,10 +196,9 @@ async def del_user_from_account(message: types.Message):
     elif db_user_id == message.from_user.id:
         await message.answer('Вы не можете удалить себя')
     else:
-        db = BotDataBase()
-        db.del_authorized_user(db_user_id)
-        await message.answer(f'Пользователь {user_name} удалён')
-        db.close()
+        async with BotDataBase() as db:
+            await db.del_authorized_user(db_user_id)
+            await message.answer(f'Пользователь {user_name} удалён')
 
 
 async def button_back_account_menu(callback_query: types.CallbackQuery, state: FSMContext):
