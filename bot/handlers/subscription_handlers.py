@@ -10,12 +10,11 @@ from bot.services.imap_control import is_valid_imap_credentials
 
 class SubscriptionMenu(StatesGroup):
     free_subscription = State()
-    free_subscription_request_data = State()
-    free_subscription_get_user_data = State()
     paid_subscription = State()
     paid_subscription_get_user_data = State()
 
 
+# присылаем пользователю способ оплаты
 async def send_payment_method_menu(callback_query: types.CallbackQuery, state: FSMContext):
     async with BotDataBase() as db:
         user_exist = await db.check_user_exist(callback_query.from_user.id)
@@ -35,6 +34,7 @@ async def send_payment_method_menu(callback_query: types.CallbackQuery, state: F
                                         reply_markup=keyboards.payment_method_menu)
 
 
+# обработчик кнопки пропустить
 async def skip_button_handler(callback_query: types.CallbackQuery):
     text = 'Выберите способ оплаты:'
     await bot.edit_message_text(message_id=callback_query.message.message_id,
@@ -45,7 +45,6 @@ async def skip_button_handler(callback_query: types.CallbackQuery):
 
 # Присылаем пользователю меню выбора подписки
 async def send_subscribe_paid_menu(callback_query: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
     button_name = callback_query.data.replace('button_', '')
     async with BotDataBase() as db:
         keyboard = keyboards.paid_subscription_menu
@@ -65,13 +64,11 @@ async def send_subscribe_paid_menu(callback_query: types.CallbackQuery, state: F
                                     text=text,
                                     reply_markup=keyboard)
         await state.update_data(subscription_register_menu_id=callback_query.message.message_id)
-        await SubscriptionMenu.paid_subscription.set()
 
 
 # Просим пользователя прислать адрес и пароль для IMAP
 async def request_email_password(callback_query: types.CallbackQuery, state: FSMContext):
     button_name = callback_query.data.replace('button_', '')
-    current_state = await state.get_state()
     data = await state.get_data()
     subscription_register_menu_id = data.get('subscription_register_menu_id')
     payment = data.get('payment')
@@ -81,6 +78,8 @@ async def request_email_password(callback_query: types.CallbackQuery, state: FSM
         text = 'Оплата банковским переводом\n'
     elif payment == 'cripto':
         text = 'Оплата переводом на криптокошелёк\n'
+
+    await SubscriptionMenu.paid_subscription.set()
 
     # узнаём какую подписку хочет получить пользователь
     if button_name == 'base_subscription':
@@ -96,7 +95,7 @@ async def request_email_password(callback_query: types.CallbackQuery, state: FSM
         text += 'Тип подписки: 1 Fansly аккаунт\n\n'
         await state.update_data(subscription_type='individual')
     elif button_name == 'get_free_subscription':
-        await SubscriptionMenu.free_subscription_get_user_data.set()
+        await SubscriptionMenu.free_subscription.set()
 
     text += 'Отправьте адрес и пароль для внешних приложений твоей почты mail.ru\n\n' \
             'Как получить пароль для внешних приложений можешь узнать кликнув по кнопке ' \
@@ -154,9 +153,62 @@ async def register_free_bot_account(message: types.Message, state: FSMContext):
         await message.answer('Не корректные данные')
 
 
-# Присылаем меню  подписки
-async def request_payment_photo(message: types.Message):
+# Просим пользователя прислать скриншот оплаты
+async def request_payment_photo(message: types.Message, state: FSMContext):
+    email_login, email_password = message.text.split()
+    data = await state.get_data()
+    payment = data.get('payment')
+    subscription_type = data.get('subscription_type')
     text = ''
+
+    # Проверяем отправленный пользователем емаил-адрес и пароль
+    if is_valid_imap_credentials(email_login, email_password):
+        await state.update_data(email_login=email_login, email_password=email_password)
+        if payment == 'bank':
+            text = 'Оплата банковским переводом\n'
+        elif payment == 'cripto':
+            text = 'Оплата переводом на криптокошелёк\n'
+
+        if subscription_type == 'base_subscription':
+            text += 'Тип подписки: Базовая\n\n'
+        elif subscription_type == 'extended':
+            text += 'Тип подписки: Расширенная\n\n'
+        elif subscription_type == 'without_limits':
+            text += 'Тип подписки: Без ограничений\n\n'
+        elif subscription_type == 'individual':
+            text += 'Тип подписки: 1 Fansly аккаунт\n\n'
+
+        text += 'Теперь оплатите подписку и пришлите скриншот оплаты\n\nРеквизиты: 0000-000-000-000'
+        await bot.send_message(chat_id=message.chat.id, text=text)
+        await SubscriptionMenu.paid_subscription_get_user_data.set()
+    else:
+        await message.answer('Не корректные данные')
+
+
+# Хэндлер для получения скриншота оплаты и записи запроса на доступ к аккаунту в БД
+async def response_payment_photo(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    email_login = data.get('email_login')
+    email_password = data.get('email_password')
+    user_id = message.from_user.id
+    user_name = message.from_user.full_name
+    subscription_type = data.get('subscription_type')
+    payment_type = data.get('payment')
+
+    # Получаем фотографию из сообщения
+    if message.photo:
+        payment_photo = message.photo[-1].file_id  # Берем самую большую версию фото из сообщения
+        async with BotDataBase() as db:
+            email_password = db.encrypt_password(email_password)  # шифруем пароль
+            # Добавляем запрос на регистрацию аккаунта в БД
+            await db.add_buy_request(user_id, user_name, email_login, email_password,
+                                     subscription_type, payment_photo, payment_type)
+            await message.answer("Спасибо! Ваша оплата для доступа к аккаунту принята."
+                                 " Мы свяжемся с вами после проверки оплаты.")
+            await state.finish()
+    else:
+        # Обработка случая, если фотография не была предоставлена
+        await message.answer("Пожалуйста, отправьте скриншот оплаты в виде фотографии.")
 
 
 def register_subscription_handlers(dp: Dispatcher):
@@ -164,10 +216,13 @@ def register_subscription_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(skip_button_handler, lambda c: c.data == 'button_skip_free')
     dp.register_callback_query_handler(send_subscribe_paid_menu, lambda c: c.data in ('button_bank_transfer',
                                                                                       'button_cripto_transfer'))
-    dp.register_callback_query_handler(request_email_password, lambda c: c.data in ('button_get_free_subscription',
-                                                                                    'button_base_subscription',
-                                                                                    'button_extended_subscription',
-                                                                                    'button_without_limits_subscription',
-                                                                                    'button_individual_subscription'),
-                                       state='*')
-    dp.register_message_handler(register_free_bot_account, state=SubscriptionMenu.free_subscription_get_user_data)
+    dp.register_callback_query_handler(request_email_password, lambda c: c.data in (
+                                                                        'button_get_free_subscription',
+                                                                        'button_base_subscription',
+                                                                        'button_extended_subscription',
+                                                                        'button_without_limits_subscription',
+                                                                        'button_individual_subscription'), state='*')
+    dp.register_message_handler(register_free_bot_account, state=SubscriptionMenu.free_subscription)
+    dp.register_message_handler(request_payment_photo, state=SubscriptionMenu.paid_subscription)
+    dp.register_message_handler(response_payment_photo, state=SubscriptionMenu.paid_subscription_get_user_data,
+                                content_types=['photo', 'text'])

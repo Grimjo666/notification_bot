@@ -60,16 +60,26 @@ class BotDataBase:
         return Fernet.generate_key()
 
     # Добавляем запрос на регистрацию аккаунта в БД
-    async def add_buy_request(self, user_id, user_name, email_login, email_password, subscription_type):
+    async def add_buy_request(self, user_id, user_name, email_login, email_password,
+                              subscription_type, payment_photo, payment_type):
         await self.cursor.execute('''INSERT OR REPLACE INTO buy_requests (
                                 user_id,
                                 user_name,
                                 email_login,
                                 email_password,
-                                subscription_type
-                                ) VALUES (?, ?, ?, ?, ?)''',
-                                  (user_id, user_name, email_login, email_password, subscription_type))
+                                subscription_type,
+                                payment_photo,
+                                payment_type
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                                  (user_id, user_name, email_login, email_password,
+                                   subscription_type, payment_photo, payment_type))
         await self.conn.commit()
+
+    # Получаем запросы на регистрацию аккаунта в БД
+    async def get_buy_requests(self):
+        await self.cursor.execute('''SELECT * FROM buy_requests''')
+        result = await self.cursor.fetchall()
+        return result
 
     # Добавляем аккаунт в БД
     async def add_bot_account(self, user_id, email_login, email_password, subscription_type, subscription_status,

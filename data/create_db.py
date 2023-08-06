@@ -11,8 +11,10 @@ def create_database():
                         user_id INTEGER PRIMARY KEY,
                         user_name TEXT,
                         email_login TEXT,
-                        email_password TEXT,
-                        subscription_type TEXT
+                        email_password BLOB,
+                        subscription_type TEXT,
+                        payment_photo TEXT,
+                        payment_type TEXT
                     )''')
 
     # основная таблица с данными об бот-аккаунтах пользователей
