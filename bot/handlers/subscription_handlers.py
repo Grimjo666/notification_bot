@@ -6,6 +6,7 @@ from bot.utils import keyboards
 from bot.create_bot import bot
 from bot.models.bot_database_control import BotDataBase
 from bot.services.imap_control import is_valid_imap_credentials
+from bot.config import subscribe_dict
 
 
 class SubscriptionMenu(StatesGroup):
@@ -45,17 +46,15 @@ async def skip_button_handler(callback_query: types.CallbackQuery):
 
 # Присылаем пользователю меню выбора подписки
 async def send_subscribe_paid_menu(callback_query: types.CallbackQuery, state: FSMContext):
-    button_name = callback_query.data.replace('button_', '')
+    button_name = callback_query.data.split('_')[1]
     async with BotDataBase() as db:
         keyboard = keyboards.paid_subscription_menu
         text = ''
 
-        if button_name == 'bank_transfer':
-            text = 'Оплата банковским переводом\n\n'
-            await state.update_data(payment='bank')
-        elif button_name == 'cripto_transfer':
-            text = 'Оплата переводом на криптокошелёк\n\n'
-            await state.update_data(payment='cripto')
+        # Проверяем какая кнопка была нажата и устанавливаем соответствующий текст
+        if button_name in subscribe_dict:
+            text = f'{subscribe_dict[button_name]}\n\n'
+            await state.update_data(payment=button_name)
 
         text += 'Выберите тип подписки, которую вы хотите купить/продлить:'
 
@@ -68,33 +67,25 @@ async def send_subscribe_paid_menu(callback_query: types.CallbackQuery, state: F
 
 # Просим пользователя прислать адрес и пароль для IMAP
 async def request_email_password(callback_query: types.CallbackQuery, state: FSMContext):
-    button_name = callback_query.data.replace('button_', '')
+    button_name = callback_query.data.split('_')
+    button_name = f'{button_name[1]}_{button_name[2]}'
     data = await state.get_data()
     subscription_register_menu_id = data.get('subscription_register_menu_id')
     payment = data.get('payment')
     text = ''
 
-    if payment == 'bank':
-        text = 'Оплата банковским переводом\n'
-    elif payment == 'cripto':
-        text = 'Оплата переводом на криптокошелёк\n'
+    if payment in subscribe_dict:
+        text = f'{subscribe_dict[payment]}\n'
 
     await SubscriptionMenu.paid_subscription.set()
 
     # узнаём какую подписку хочет получить пользователь
-    if button_name == 'base_subscription':
-        text += 'Тип подписки: Базовая\n\n'
-        await state.update_data(subscription_type='base')
-    elif button_name == 'extended_subscription':
-        text += 'Тип подписки: Расширенная\n\n'
-        await state.update_data(subscription_type='extended')
-    elif button_name == 'without_limits_subscription':
-        text += 'Тип подписки: Без ограничений\n\n'
-        await state.update_data(subscription_type='without_limits')
-    elif button_name == 'individual_subscription':
-        text += 'Тип подписки: 1 Fansly аккаунт\n\n'
-        await state.update_data(subscription_type='individual')
-    elif button_name == 'get_free_subscription':
+    if button_name in subscribe_dict:
+        text += f'Тип подписки: {subscribe_dict[button_name]}\n\n'
+
+        await state.update_data(subscription_type=button_name)
+
+    elif callback_query.data == 'button_get_free_subscription':
         await SubscriptionMenu.free_subscription.set()
 
     text += 'Отправьте адрес и пароль для внешних приложений твоей почты mail.ru\n\n' \
@@ -164,19 +155,12 @@ async def request_payment_photo(message: types.Message, state: FSMContext):
     # Проверяем отправленный пользователем емаил-адрес и пароль
     if is_valid_imap_credentials(email_login, email_password):
         await state.update_data(email_login=email_login, email_password=email_password)
-        if payment == 'bank':
-            text = 'Оплата банковским переводом\n'
-        elif payment == 'cripto':
-            text = 'Оплата переводом на криптокошелёк\n'
 
-        if subscription_type == 'base_subscription':
-            text += 'Тип подписки: Базовая\n\n'
-        elif subscription_type == 'extended':
-            text += 'Тип подписки: Расширенная\n\n'
-        elif subscription_type == 'without_limits':
-            text += 'Тип подписки: Без ограничений\n\n'
-        elif subscription_type == 'individual':
-            text += 'Тип подписки: 1 Fansly аккаунт\n\n'
+        if payment in subscribe_dict:
+            text = f'{subscribe_dict[payment]}\n'
+
+        if subscription_type in subscribe_dict:
+            text += f'Тип подписки: {subscribe_dict[subscription_type]}\n\n'
 
         text += 'Теперь оплатите подписку и пришлите скриншот оплаты\n\nРеквизиты: 0000-000-000-000'
         await bot.send_message(chat_id=message.chat.id, text=text)
@@ -199,7 +183,7 @@ async def response_payment_photo(message: types.Message, state: FSMContext):
     if message.photo:
         payment_photo = message.photo[-1].file_id  # Берем самую большую версию фото из сообщения
         async with BotDataBase() as db:
-            email_password = db.encrypt_password(email_password)  # шифруем пароль
+            email_password = await db.encrypt_password(email_password)  # шифруем пароль
             # Добавляем запрос на регистрацию аккаунта в БД
             await db.add_buy_request(user_id, user_name, email_login, email_password,
                                      subscription_type, payment_photo, payment_type)

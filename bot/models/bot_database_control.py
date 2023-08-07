@@ -3,6 +3,7 @@ import aiosqlite
 from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
 from bot import config
+from dateutil.relativedelta import relativedelta
 
 
 class DBErrors(Exception):
@@ -42,6 +43,7 @@ class BotDataBase:
     # Функция для расшифровки пароля
     async def decrypt_password(self, encrypted_password):
         encryption_key = self.__encryption_key
+
         # Преобразуем ключ в байтовый формат, так как Fernet принимает только байтовые ключи
         key = encryption_key.encode('utf-8')
 
@@ -78,6 +80,11 @@ class BotDataBase:
     # Получаем запросы на регистрацию аккаунта в БД
     async def get_buy_requests(self):
         await self.cursor.execute('''SELECT * FROM buy_requests''')
+        result = await self.cursor.fetchall()
+        return result
+
+    async def get_buy_request_by_id(self, user_id):
+        await self.cursor.execute('''SELECT * FROM buy_requests WHERE user_id = ?''', (user_id,))
         result = await self.cursor.fetchall()
         return result
 
@@ -338,6 +345,10 @@ class BotDataBase:
     def get_current_datetime() -> datetime:
         return datetime.now()
 
+    @staticmethod
+    def add_months(date: datetime, count_months=1):
+        return date + relativedelta(months=count_months)
+
     # Прибавляем к переданной переданное количество дней, по умолчанию 1
     @staticmethod
     def add_days(date: datetime, count_days=1) -> datetime:
@@ -353,5 +364,18 @@ class BotDataBase:
         date = self.get_current_datetime()
         return self.add_days(date, 2).strftime('%Y-%m-%d %H:%M:%S')
 
+    # Возвращаем дату подписок в формате строки
+    @staticmethod
+    def get_str_expiration_date(date) -> str:
+        return date.strftime('%Y-%m-%d %H:%M:%S')
+
     async def get_subscription_expiration_date(self, user_id):
         await self.cursor.execute('''SELECT subscription_expiration_date FROM bot_accounts''')
+
+    # Получаем информацию о админах
+    async def get_admins_id(self):
+        await self.cursor.execute('''SELECT admin_id FROM admins''')
+        admins = await self.cursor.fetchall()
+        result = [admin[0] for admin in admins]
+        return result
+

@@ -103,6 +103,28 @@ payment_method_menu.add(button_bank_transfer,
                         button_close)
 
 
+main_admin_menu = InlineKeyboardMarkup(row_width=1)
+
+button_show_requests = InlineKeyboardButton('Запросы на регистрацию', callback_data='button_show_requests')
+button_edit_account = InlineKeyboardButton('Изменить подписку', callback_data='button_edit_account')
+button_account_off = InlineKeyboardButton('Сделать аккаунт не активным', callback_data='button_account_off')
+button_account_on = InlineKeyboardButton('Активировать аккаунт', callback_data='button_account_on')
+button_del_account = InlineKeyboardButton('Удалить аккаунт', callback_data='button_del_account')
+
+main_admin_menu.add(button_show_requests,
+                    button_edit_account,
+                    button_account_off,
+                    button_account_on,
+                    button_del_account,
+                    button_close)
+
+register_account_menu = InlineKeyboardMarkup(row_width=1)
+
+button_approved = InlineKeyboardButton('Одобрено', callback_data='button_approved')
+button_reject= InlineKeyboardButton('Отклонено', callback_data='button_reject')
+
+register_account_menu.add(button_approved, button_reject, button_close)
+
 # def create_models_keyboard():
 #     models = get_all_emails()
 #     keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
