@@ -70,4 +70,5 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     loop.create_task(background_tasks.add_new_notification_and_send())
+    loop.create_task(background_tasks.check_account_expiration_date())
     executor.start_polling(dp, skip_updates=True)

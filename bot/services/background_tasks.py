@@ -65,6 +65,17 @@ async def add_new_notification_and_send():
         await asyncio.sleep(20)
 
 
+async def check_account_expiration_date():
+    while True:
+        async with BotDataBase() as  db:
+            for user_id, _, _, _, subscription_status, subscription_expiration_date, *_ in await db.get_accounts():
+                if not await db.check_subscription_status(user_id=user_id):
+                    continue
+                if not await db.check_expiration_date(subscription_expiration_date):
+                    await db.deactivate_bot_account(user_id=user_id)
+        await asyncio.sleep(300)
+
+
 # отправка сообщения с установленной задержкой
 async def send_message_with_delay(my_bot, user_id, text, delay_seconds):
     try:

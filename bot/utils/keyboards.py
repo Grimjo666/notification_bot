@@ -106,17 +106,35 @@ payment_method_menu.add(button_bank_transfer,
 main_admin_menu = InlineKeyboardMarkup(row_width=1)
 
 button_show_requests = InlineKeyboardButton('Запросы на регистрацию', callback_data='button_show_requests')
+button_account_management_menu = InlineKeyboardButton('Управление подписками пользователей',
+                                                callback_data='button_account_management_menu')
+
+
+main_admin_menu.add(button_show_requests,
+                    button_account_management_menu,
+                    button_close)
+
+
+edit_account_subscribe_menu = InlineKeyboardMarkup(row_width=1)
+
+button_show_accounts = InlineKeyboardButton('Аккаунты', callback_data='button_show_accounts')
 button_edit_account = InlineKeyboardButton('Изменить подписку', callback_data='button_edit_account')
 button_account_off = InlineKeyboardButton('Сделать аккаунт не активным', callback_data='button_account_off')
 button_account_on = InlineKeyboardButton('Активировать аккаунт', callback_data='button_account_on')
 button_del_account = InlineKeyboardButton('Удалить аккаунт', callback_data='button_del_account')
 
-main_admin_menu.add(button_show_requests,
-                    button_edit_account,
-                    button_account_off,
-                    button_account_on,
-                    button_del_account,
-                    button_close)
+edit_account_subscribe_menu.add(button_show_accounts,
+                                button_edit_account,
+                                button_account_on,
+                                button_account_off,
+                                button_del_account,
+                                button_close)
+
+
+admin_back_or_close_markup = InlineKeyboardMarkup(row_width=1)
+
+admin_back_or_close_markup.add(button_back, button_close)
+
 
 register_account_menu = InlineKeyboardMarkup(row_width=1)
 

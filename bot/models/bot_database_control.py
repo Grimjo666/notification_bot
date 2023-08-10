@@ -88,6 +88,10 @@ class BotDataBase:
         result = await self.cursor.fetchall()
         return result
 
+    async def del_buy_request(self, user_id):
+        await self.cursor.execute('''DELETE FROM buy_requests WHERE user_id = ?''', (user_id,))
+        await self.conn.commit()
+
     # Добавляем аккаунт в БД
     async def add_bot_account(self, user_id, email_login, email_password, subscription_type, subscription_status,
                               subscription_expiration_date, number_of_available_users=100,
@@ -116,8 +120,8 @@ class BotDataBase:
     # Обновляем аккаунт пользователя
     async def update_bot_account(self, user_id, subscription_type, subscription_status,
                                  subscription_expiration_date, number_of_available_users, number_of_available_emails):
-        await self.cursor.execute('''UPDATE bot_accounts SET email_login = ?,
-                                                    subscription_type = ?,
+        await self.cursor.execute('''UPDATE bot_accounts SET subscription_type = ?,
+                                                    subscription_status = ?,
                                                     subscription_expiration_date = ?,
                                                     number_of_available_users = ?,
                                                     number_of_available_emails = ?
@@ -126,11 +130,38 @@ class BotDataBase:
                                    number_of_available_users, number_of_available_emails, user_id))
         await self.conn.commit()
 
+    # Продлеваем подписку пользователя
+    async def renew_bot_account(self, user_id, subscription_status, subscription_expiration_date):
+        await self.cursor.execute('''UPDATE bot_accounts SET subscription_status = ?, subscription_expiration_date = ?
+         WHERE user_id = ?''', (subscription_status, subscription_expiration_date, user_id))
+        await self.conn.commit()
+
+    # Деактивируем аккаунт пользователя
+    async def deactivate_bot_account(self, user_id):
+        subscription_status = 'not active'
+        await self.cursor.execute('''UPDATE bot_accounts SET subscription_status = ? WHERE user_id = ?''',
+                                  (subscription_status, user_id))
+        await self.conn.commit()
+
     # Получаем информацию об аккаунтах из бд
     async def get_accounts(self):
         await self.cursor.execute('''SELECT * FROM bot_accounts''')
         accounts = await self.cursor.fetchall()
         return accounts
+
+    async def get_user_name(self, user_id):
+        await self.cursor.execute('''SELECT user_name FROM authorized_users WHERE user_id = ?''', (user_id, ))
+        result = await self.cursor.fetchone()
+        if result:
+            return result[0]
+
+    # Получаем количество доступных телеграм-аккаунтов и уведомления для бот-аккаунта
+    async def get_count_tg_and_emails(self, user_id):
+        await self.cursor.execute('''SELECT number_of_available_users, number_of_available_emails
+         FROM bot_accounts WHERE user_id = ?''', (user_id,))
+        result = await self.cursor.fetchone()
+        if result:
+            return result[0], result[1]
 
     # Проверка на то, является ли подписка активной
     async def check_subscription_status(self, user_id):
@@ -196,6 +227,16 @@ class BotDataBase:
                                                            WHERE user_id = ?''',
                                   (message_notifications, purchase_notifications, other_notifications, user_id))
         await self.conn.commit()
+
+    async def check_account_status(self, authorized_user_id):
+        await self.cursor.execute('''SELECT email_login FROM authorized_users WHERE user_id = ?''', (authorized_user_id, ))
+        email_login = await self.cursor.fetchone()
+        if email_login:
+            await self.cursor.execute('''SELECT subscription_status FROM bot_accounts WHERE email_login = ?''',
+                                      (email_login[0],))
+            status = await self.cursor.fetchone()
+            return status[0] == 'active'
+        return False
 
     # Добавляем email-уведомление в аккаунт
     async def add_account_notification(self, email_recipient, email_login, notification_name='None'):
@@ -355,9 +396,10 @@ class BotDataBase:
         return date + timedelta(days=count_days)
 
     # Проверяем является ли передаваемая дата больше текущий даты
-    async def check_expiration_date(self, date: datetime) -> bool:
+    async def check_expiration_date(self, expiration_date) -> bool:
         current_date = self.get_current_datetime()
-        return date > current_date
+        date_object = datetime.strptime(expiration_date, '%Y-%m-%d %H:%M:%S')
+        return date_object > current_date
 
     # Поучаем текущую дату и возвращаем дату истечения бесплатной подписки в формате str
     async def get_free_subscription_expiration_date(self) -> str:
@@ -369,8 +411,13 @@ class BotDataBase:
     def get_str_expiration_date(date) -> str:
         return date.strftime('%Y-%m-%d %H:%M:%S')
 
+    # Получаем дату, до которой действует подписка
     async def get_subscription_expiration_date(self, user_id):
-        await self.cursor.execute('''SELECT subscription_expiration_date FROM bot_accounts''')
+        await self.cursor.execute('''SELECT subscription_expiration_date FROM bot_accounts WHERE user_id = ?''',
+                                  (user_id,))
+        result = await self.cursor.fetchone()
+        if result is not None:
+            return result[0]
 
     # Получаем информацию о админах
     async def get_admins_id(self):

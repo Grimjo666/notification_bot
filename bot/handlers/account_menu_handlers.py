@@ -23,19 +23,19 @@ async def send_notification_and_transition_account_menu(callback_query: types.Ca
         chat_id = callback_query.message.chat.id
         message_id = callback_query.message.message_id
 
-        match await db.check_account_exist(user_id), await db.check_user_exist(user_id):
-            case True, True:
+        match await db.check_account_exist(user_id), await db.check_user_exist(user_id), await db.check_account_status(user_id):
+            case True, True, True:
                 await bot.edit_message_text(chat_id=chat_id,
                                             message_id=message_id,
                                             text='Выберите меню:',
                                             reply_markup=keyboards.transition_account_menu)
 
-            case False, True:
+            case False, True, True:
                 await bot.edit_message_text(chat_id=chat_id,
                                             message_id=message_id,
                                             text='Меню управления вашими личными уведомлениями:',
                                             reply_markup=keyboards.notification_menu)
-            case False, False:
+            case _, _, False:
                 await bot.send_message(chat_id=chat_id, text='У вас нет доступа к боту, купите/продлите подписку.')
 
 
@@ -48,29 +48,38 @@ async def send_account_control_menu(callback_query: types.CallbackQuery, state: 
         email_login = await db.get_email_login_by_user_id(user_id=user_id)
         notifications = await db.get_account_notifications(email_login=email_login)
         users = await db.get_users_from_authorized_users(email_login=email_login)
-
-        text = 'Меню управления вашим аккаунтом\n\nУведомления аккаунта:\n'
+        expiration_date = await db.get_subscription_expiration_date(user_id=user_id)
+        count_available_tg, count_available_email = await db.get_count_tg_and_emails(user_id=user_id)
+        count_used_tg, count_used_emails = 0, 0
 
         notifications_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
         users_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
 
+        temp_text = ''
+
         if len(notifications) == 0:
-            text += 'У вас нет уведомлений'
+            temp_text += '--У вас нет уведомлений'
 
         for _, email_recipient, notification_name, _ in notifications:
+            count_used_emails += 1
             if notification_name == 'None':
                 notification_name = 'Не задано'
-            text += f'--{email_recipient} | {notification_name}\n'
+            temp_text += f'--{email_recipient} | {notification_name}\n'
             notifications_keyboard.add(KeyboardButton(f'{email_recipient} | {notification_name}'))
 
-        text += '\nПользователи с доступом к боту:\n'
-
+        temp_text_tg = ''
         for db_user_id, user_name, _, _, _, is_chat, _ in users:
+            count_used_tg += 1
             if db_user_id == user_id:
-                text += f'--{user_name} <- ВЫ\n'
+                temp_text_tg += f'--{user_name} <- ВЫ\n'
             else:
-                text += f'--{user_name}\n'
+                temp_text_tg += f'--{user_name}\n'
                 users_keyboard.add(KeyboardButton(f'{db_user_id} | {user_name}'))
+
+        temp_text += f'\n\nПользователи с доступом к боту: {count_used_tg} из {count_available_tg}\n' + temp_text_tg
+
+        text = f'Меню управления вашим аккаунтом\n\nДата истечения срока подписки: {expiration_date}\n\n' \
+               f'Уведомления аккаунта: {count_used_emails} из {count_available_email}\n' + temp_text
 
         await bot.edit_message_text(chat_id=chat_id,
                                     message_id=message_id,
