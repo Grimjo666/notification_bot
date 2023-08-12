@@ -143,6 +143,12 @@ class BotDataBase:
                                   (subscription_status, user_id))
         await self.conn.commit()
 
+    # Удаляем аккаунт из базы данных
+    async def del_bot_account(self, user_id):
+        await self.cursor.execute('''DELETE FROM bot_accounts WHERE user_id = ?''', (user_id,))
+        await self.conn.commit()
+
+
     # Получаем информацию об аккаунтах из бд
     async def get_accounts(self):
         await self.cursor.execute('''SELECT * FROM bot_accounts''')

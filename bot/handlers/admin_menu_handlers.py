@@ -5,7 +5,7 @@ import re
 
 from bot.utils import keyboards
 from bot.create_bot import bot
-from bot.models.bot_database_control import BotDataBase
+from bot.models.bot_database_control import BotDataBase, DBErrors
 from bot.config import subscribe_dict, subscribe_type_dict
 
 
@@ -99,12 +99,13 @@ async def handle_approve_reject(callback_query: types.CallbackQuery):
 
 
 # Присылаем меню управления аккаунтом
-async def send_account_subscribe_management_menu(callback_query: types.CallbackQuery):
+async def send_account_subscribe_management_menu(callback_query: types.CallbackQuery, state: FSMContext):
     text = 'Выберите меню:'
     await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                 message_id=callback_query.message.message_id,
                                 text=text,
-                                reply_markup=keyboards.edit_account_subscribe_menu)
+                                reply_markup=keyboards.management_account_subscribe_menu)
+    await state.update_data(button_back='admin_menu')
 
 
 async def send_accounts_list(callback_query: types.CallbackQuery):
@@ -117,7 +118,7 @@ async def send_accounts_list(callback_query: types.CallbackQuery):
             await callback_query.message.answer(text)
 
 
-async def send_activate_account_menu(callback_query: types.CallbackQuery):
+async def management_account_menu_buttons_handler(callback_query: types.CallbackQuery, state: FSMContext):
     text = ''
     data = callback_query.data
 
@@ -134,8 +135,9 @@ async def send_activate_account_menu(callback_query: types.CallbackQuery):
         await AdminMenu.del_account.set()
 
     elif data == 'button_edit_account':
-        text = 'Отправь'
+        text = 'Отправь ID пользователя'
         await AdminMenu.edit_account.set()
+        await state.update_data(menu_id=callback_query.message.message_id)
 
     await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                 message_id=callback_query.message.message_id,
@@ -175,6 +177,39 @@ async def deactivate_account_handler(message: types.message):
         await message.answer('Произошла ошибка')
 
 
+async def edit_account_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    menu_id = data.get('menu_id')
+    user_id = message.text
+    text = 'Выберите действие'
+    try:
+        async with BotDataBase() as db:
+            user_id = int(user_id)
+            if not await db.check_account_exist(user_id):
+                raise DBErrors('аккаунт не найден (edit_account_handler)')
+
+            await bot.edit_message_text(chat_id=message.chat.id, message_id=menu_id, text=text,
+                                        reply_markup=keyboards.edit_account_subscribe_menu)
+            await state.update_data(user_id=user_id)
+    except:
+        await message.answer('Произошла ошибка')
+
+
+async def send_edit_subscription_type_menu(callback_query: types.CallbackQuery):
+    text = 'Выберите новый тип подписки, который вы хотите установить'
+
+
+async def del_account_handler(message: types.Message):
+    user_id = message.text
+    try:
+        async with BotDataBase() as db:
+            user_id = int(user_id)
+            await db.del_bot_account(user_id)
+            await message.answer('аккаунт удалён')
+    except:
+        await message.answer('произошла ошибка')
+
+
 def register_admin_menu_handlers(dp: Dispatcher):
     dp.register_message_handler(send_admin_menu, commands='admin')
     dp.register_callback_query_handler(send_buy_requests, lambda c: c.data == 'button_show_requests')
@@ -182,9 +217,11 @@ def register_admin_menu_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(send_account_subscribe_management_menu,
                                        lambda c: c.data == 'button_account_management_menu')
     dp.register_callback_query_handler(send_accounts_list, lambda c: c.data == 'button_show_accounts')
-    dp.register_callback_query_handler(send_activate_account_menu, lambda c: c.data in
-                                                                             ('button_account_on', 'button_account_off',
-                                                                              'button_edit_account',
-                                                                              'button_del_account'))
+    dp.register_callback_query_handler(management_account_menu_buttons_handler, lambda c: c.data in
+                                                                                          ('button_account_on',
+                                                                                           'button_account_off',
+                                                                                           'button_edit_account',
+                                                                                           'button_del_account'))
     dp.register_message_handler(activate_account_handler, state=AdminMenu.activate_account)
     dp.register_message_handler(deactivate_account_handler, state=AdminMenu.deactivate_account)
+    dp.register_message_handler(edit_account_handler, state=AdminMenu.edit_account)

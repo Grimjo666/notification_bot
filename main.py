@@ -66,6 +66,20 @@ async def close_handler(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
 
 
+# Обработчик кнопки назад
+@dp.callback_query_handler(lambda c: c.data == 'button_back', state='*')
+async def button_back_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    menu = data.get('button_back')
+    await state.finish()
+    if menu == 'account_menu':
+        await account_menu_handlers.send_account_control_menu(callback_query, state)
+    elif menu == 'admin_menu':
+        await admin_menu_handlers.send_account_subscribe_management_menu(callback_query, state)
+    elif menu == 'edit_account_menu':
+        await admin_menu_handlers.edit_account_handler(callback_query.message)
+
+
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 

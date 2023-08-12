@@ -88,7 +88,8 @@ async def send_account_control_menu(callback_query: types.CallbackQuery, state: 
 
         await state.update_data(notifications_keyboard=notifications_keyboard,
                                 users_keyboard=users_keyboard,
-                                email_login=email_login)
+                                email_login=email_login,
+                                button_back='account_menu')
 
 
 async def requests_notification_name_for_change(callback_query: types.callback_query, state: FSMContext):
@@ -210,11 +211,6 @@ async def del_user_from_account(message: types.Message):
             await message.answer(f'Пользователь {user_name} удалён')
 
 
-async def button_back_account_menu(callback_query: types.CallbackQuery, state: FSMContext):
-    await send_account_control_menu(callback_query, state)
-    await state.finish()
-
-
 def register_account_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(send_notification_and_transition_account_menu,
                                        lambda c: c.data == 'button_account_menu')
@@ -228,4 +224,3 @@ def register_account_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(del_user_from_account_menu, lambda c: c.data == 'button_del_user_from_account')
     dp.register_callback_query_handler(send_users_keyboard, lambda c: c.data == 'button_show_users', state='*')
     dp.register_message_handler(del_user_from_account, state=AccountMenu.del_user)
-    dp.register_callback_query_handler(button_back_account_menu, lambda c: c.data == 'button_back', state='*')
