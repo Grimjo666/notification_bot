@@ -23,3 +23,8 @@ subscribe_type_dict = {'base_subscription': (3, 6),
                        'extended_subscription': (6, 15),
                        'without_limits': (100, 200),
                        'individual_subscription': (2, 1)}
+
+subscribe_type_rus_to_eng = {'Базовая подписка': 'base_subscription',
+                             'Расширенная подписка':  'extended_subscription',
+                             'Без ограничений': 'without_limits',
+                             '1 Fansly аккаунт': 'individual_subscription'}

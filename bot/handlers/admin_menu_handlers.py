@@ -6,7 +6,7 @@ import re
 from bot.utils import keyboards
 from bot.create_bot import bot
 from bot.models.bot_database_control import BotDataBase, DBErrors
-from bot.config import subscribe_dict, subscribe_type_dict
+from bot.config import subscribe_dict, subscribe_type_dict, subscribe_type_rus_to_eng
 
 
 class AdminMenu(StatesGroup):
@@ -15,6 +15,8 @@ class AdminMenu(StatesGroup):
     deactivate_account = State()
     del_account = State()
     edit_account = State()
+    edit_account_choose_type = State()
+    edit_account_expiration_date = State()
 
 
 # Присылаем основное админ-меню
@@ -195,8 +197,68 @@ async def edit_account_handler(message: types.Message, state: FSMContext):
         await message.answer('Произошла ошибка')
 
 
-async def send_edit_subscription_type_menu(callback_query: types.CallbackQuery):
+# Присылаем меню выбора смены подписки
+async def send_edit_account_change_type_menu(callback_query: types.CallbackQuery):
     text = 'Выберите новый тип подписки, который вы хотите установить'
+
+    await bot.send_message(chat_id=callback_query.message.chat.id,
+                           text=text,
+                           reply_markup=keyboards.subscribe_type_buttons)
+    await AdminMenu.edit_account_choose_type.set()
+
+
+async def change_account_subscribe_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get('user_id')
+    async with BotDataBase() as db:
+        if message.text in subscribe_type_rus_to_eng:
+            subscription_type = subscribe_type_rus_to_eng[message.text]
+            # Получаем инфу о подписке через словарь
+            number_of_available_users, number_of_available_emails = subscribe_type_dict[subscription_type]
+            await db.update_bot_account(user_id=user_id,
+                                        subscription_type=subscription_type,
+                                        subscription_status='active',
+                                        number_of_available_emails=number_of_available_emails,
+                                        number_of_available_users=number_of_available_users
+                                        )
+
+            await message.answer('Подписка успешно изменена')
+        else:
+            await message.answer('Не корректные данные')
+
+
+async def send_edit_expiration_date_menu(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get('user_id')
+    async with BotDataBase() as db:
+        expiration_date = await db.get_subscription_expiration_date(user_id=user_id)
+
+    text = f'Дата истечения срока подписки выбранного аккаунта: {expiration_date}\n\n' \
+           f'Пришлите дату в формате дд мм гггг\nПример: 02 01 2000'
+
+    await bot.edit_message_text(chat_id=callback_query.message.chat.id,
+                                message_id=callback_query.message.message_id,
+                                text=text,
+                                reply_markup=keyboards.admin_back_or_close_markup)
+    await AdminMenu.edit_account_expiration_date.set()
+
+
+# Изменяем срок действия подписки
+async def edit_expiration_date(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get('user_id')
+
+    async with BotDataBase() as db:
+        date = db.is_valid_date(message.text)
+
+        if date:
+            expiration_date = db.get_str_expiration_date(date)
+            await db.renew_bot_account(user_id=user_id,
+                                       subscription_status='active',
+                                       subscription_expiration_date=expiration_date)
+            await message.answer('Дата действия подписки успешно изменена')
+        else:
+            await message.answer('Не корректный формат даты')
 
 
 async def del_account_handler(message: types.Message):
@@ -225,3 +287,9 @@ def register_admin_menu_handlers(dp: Dispatcher):
     dp.register_message_handler(activate_account_handler, state=AdminMenu.activate_account)
     dp.register_message_handler(deactivate_account_handler, state=AdminMenu.deactivate_account)
     dp.register_message_handler(edit_account_handler, state=AdminMenu.edit_account)
+    dp.register_callback_query_handler(send_edit_account_change_type_menu,
+                                       lambda c: c.data == 'button_edit_subscription_type', state='*')
+    dp.register_message_handler(change_account_subscribe_type, state=AdminMenu.edit_account_choose_type)
+    dp.register_callback_query_handler(send_edit_expiration_date_menu, lambda c: c.data == 'button_edit_expiration_date',
+                                       state='*')
+    dp.register_message_handler(edit_expiration_date, state=AdminMenu.edit_account_expiration_date)

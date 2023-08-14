@@ -119,15 +119,26 @@ class BotDataBase:
 
     # Обновляем аккаунт пользователя
     async def update_bot_account(self, user_id, subscription_type, subscription_status,
-                                 subscription_expiration_date, number_of_available_users, number_of_available_emails):
-        await self.cursor.execute('''UPDATE bot_accounts SET subscription_type = ?,
-                                                    subscription_status = ?,
-                                                    subscription_expiration_date = ?,
-                                                    number_of_available_users = ?,
-                                                    number_of_available_emails = ?
-                                                    WHERE user_id = ?''',
-                                  (subscription_type, subscription_status, subscription_expiration_date,
-                                   number_of_available_users, number_of_available_emails, user_id))
+                                 number_of_available_users, number_of_available_emails,
+                                 subscription_expiration_date=None):
+        if subscription_expiration_date is None:
+            await self.cursor.execute('''UPDATE bot_accounts SET subscription_type = ?,
+                                                                subscription_status = ?,
+                                                                number_of_available_users = ?,
+                                                                number_of_available_emails = ?
+                                                                WHERE user_id = ?''',
+                                      (subscription_type, subscription_status, number_of_available_users,
+                                       number_of_available_emails, user_id))
+        else:
+            await self.cursor.execute('''UPDATE bot_accounts SET subscription_type = ?,
+                                                                subscription_status = ?,
+                                                                subscription_expiration_date = ?,
+                                                                number_of_available_users = ?,
+                                                                number_of_available_emails = ?
+                                                                WHERE user_id = ?''',
+                                      (subscription_type, subscription_status, subscription_expiration_date,
+                                       number_of_available_users, number_of_available_emails, user_id))
+
         await self.conn.commit()
 
     # Продлеваем подписку пользователя
@@ -147,7 +158,6 @@ class BotDataBase:
     async def del_bot_account(self, user_id):
         await self.cursor.execute('''DELETE FROM bot_accounts WHERE user_id = ?''', (user_id,))
         await self.conn.commit()
-
 
     # Получаем информацию об аккаунтах из бд
     async def get_accounts(self):
@@ -416,6 +426,14 @@ class BotDataBase:
     @staticmethod
     def get_str_expiration_date(date) -> str:
         return date.strftime('%Y-%m-%d %H:%M:%S')
+
+    @staticmethod
+    def is_valid_date(date_str):
+        try:
+            date = datetime.strptime(date_str, '%d %m %Y')
+            return date
+        except ValueError:
+            return False
 
     # Получаем дату, до которой действует подписка
     async def get_subscription_expiration_date(self, user_id):

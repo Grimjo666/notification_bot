@@ -150,6 +150,28 @@ button_reject= InlineKeyboardButton('Отклонено', callback_data='button_
 
 register_account_menu.add(button_approved, button_reject, button_close)
 
+
+edit_account_change_type_menu = InlineKeyboardMarkup(row_width=2)
+
+edit_account_change_type_menu.add(button_base_subscription,
+                                  button_extended_subscription,
+                                  button_without_limits_subscription,
+                                  button_individual_subscription,
+                                  button_back,
+                                  button_close)
+
+
+subscribe_type_buttons = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=False)
+
+button1 = KeyboardButton('Базовая подписка')
+button2 = KeyboardButton('Расширенная подписка')
+button3 = KeyboardButton('Без ограничений')
+button4 = KeyboardButton('1 Fansly аккаунт')
+button5 = KeyboardButton('Отмена')
+
+subscribe_type_buttons.add(button1, button2, button3, button4, button5)
+
+
 # def create_models_keyboard():
 #     models = get_all_emails()
 #     keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=False)
