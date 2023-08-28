@@ -2,6 +2,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+import logging
 
 from bot.models.bot_database_control import BotDataBase, DBErrors
 from bot.utils import keyboards
@@ -122,11 +123,14 @@ async def switch_filters(callback_query: types.CallbackQuery):
 
 
 def register_notifications_menu_handlers(dp: Dispatcher):
-    dp.register_callback_query_handler(send_notification_menu, lambda c: c.data == 'button_notification_menu')
-    dp.register_callback_query_handler(send_switch_notifications_buttons, lambda c: c.data == 'button_switch_notifications')
-    dp.register_message_handler(switch_notification_handler, state=NotificationsMenu.switch_notification)
-    dp.register_callback_query_handler(send_switch_notification_filters_menu,
-                                       lambda c: c.data == 'button_add_filters', state='*')
-    dp.register_callback_query_handler(switch_filters, lambda c: c.data in ('button_message_filter',
-                                                                            'button_paid_filter',
-                                                                            'button_other_filter'), state='*')
+    try:
+        dp.register_callback_query_handler(send_notification_menu, lambda c: c.data == 'button_notification_menu')
+        dp.register_callback_query_handler(send_switch_notifications_buttons, lambda c: c.data == 'button_switch_notifications')
+        dp.register_message_handler(switch_notification_handler, state=NotificationsMenu.switch_notification)
+        dp.register_callback_query_handler(send_switch_notification_filters_menu,
+                                           lambda c: c.data == 'button_add_filters', state='*')
+        dp.register_callback_query_handler(switch_filters, lambda c: c.data in ('button_message_filter',
+                                                                                'button_paid_filter',
+                                                                                'button_other_filter'), state='*')
+    except Exception as ex:
+        logging.error(f"Error while registering notifications menu handlers: {ex}")

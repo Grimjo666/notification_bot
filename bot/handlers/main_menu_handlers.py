@@ -1,6 +1,7 @@
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+import logging
 
 from bot.utils import keyboards
 from bot.create_bot import bot
@@ -40,5 +41,8 @@ async def send_main_menu(callback_query: types.CallbackQuery, state: FSMContext)
 
 
 def register_main_menu_handlers(dp: Dispatcher):
-    dp.register_message_handler(command_start, commands=['start', 'menu'])
-    dp.register_callback_query_handler(send_main_menu, lambda c: c.data == 'button_main_menu', state='*')
+    try:
+        dp.register_message_handler(command_start, commands=['start', 'menu'])
+        dp.register_callback_query_handler(send_main_menu, lambda c: c.data == 'button_main_menu', state='*')
+    except Exception as ex:
+        logging.error(f"Error while registering main menu handlers: {ex}")

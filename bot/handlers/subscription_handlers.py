@@ -1,6 +1,7 @@
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+import logging
 
 from bot.utils import keyboards
 from bot.create_bot import bot
@@ -196,17 +197,20 @@ async def response_payment_photo(message: types.Message, state: FSMContext):
 
 
 def register_subscription_handlers(dp: Dispatcher):
-    dp.register_callback_query_handler(send_payment_method_menu, lambda c: c.data == 'button_subscribe_menu')
-    dp.register_callback_query_handler(skip_button_handler, lambda c: c.data == 'button_skip_free')
-    dp.register_callback_query_handler(send_subscribe_paid_menu, lambda c: c.data in ('button_bank_transfer',
-                                                                                      'button_cripto_transfer'))
-    dp.register_callback_query_handler(request_email_password, lambda c: c.data in (
-                                                                        'button_get_free_subscription',
-                                                                        'button_base_subscription',
-                                                                        'button_extended_subscription',
-                                                                        'button_without_limits_subscription',
-                                                                        'button_individual_subscription'), state='*')
-    dp.register_message_handler(register_free_bot_account, state=SubscriptionMenu.free_subscription)
-    dp.register_message_handler(request_payment_photo, state=SubscriptionMenu.paid_subscription)
-    dp.register_message_handler(response_payment_photo, state=SubscriptionMenu.paid_subscription_get_user_data,
-                                content_types=['photo', 'text'])
+    try:
+        dp.register_callback_query_handler(send_payment_method_menu, lambda c: c.data == 'button_subscribe_menu')
+        dp.register_callback_query_handler(skip_button_handler, lambda c: c.data == 'button_skip_free')
+        dp.register_callback_query_handler(send_subscribe_paid_menu, lambda c: c.data in ('button_bank_transfer',
+                                                                                          'button_cripto_transfer'))
+        dp.register_callback_query_handler(request_email_password, lambda c: c.data in (
+                                                                            'button_get_free_subscription',
+                                                                            'button_base_subscription',
+                                                                            'button_extended_subscription',
+                                                                            'button_without_limits_subscription',
+                                                                            'button_individual_subscription'), state='*')
+        dp.register_message_handler(register_free_bot_account, state=SubscriptionMenu.free_subscription)
+        dp.register_message_handler(request_payment_photo, state=SubscriptionMenu.paid_subscription)
+        dp.register_message_handler(response_payment_photo, state=SubscriptionMenu.paid_subscription_get_user_data,
+                                    content_types=['photo', 'text'])
+    except Exception as ex:
+        logging.error(f"Error while registering subscription menu handlers: {ex}")

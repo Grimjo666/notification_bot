@@ -4,6 +4,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.exceptions import ChatNotFound
 from sqlite3 import IntegrityError
+import logging
 
 from bot.models.bot_database_control import BotDataBase, DBErrors
 from bot.utils import keyboards
@@ -212,15 +213,18 @@ async def del_user_from_account(message: types.Message):
 
 
 def register_account_handlers(dp: Dispatcher):
-    dp.register_callback_query_handler(send_notification_and_transition_account_menu,
-                                       lambda c: c.data == 'button_account_menu')
-    dp.register_callback_query_handler(send_account_control_menu, lambda c: c.data == 'button_account_menu_control')
-    dp.register_callback_query_handler(requests_notification_name_for_change,
-                                       lambda c: c.data == 'button_edit_notification_name')
-    dp.register_message_handler(response_notification_name, state=AccountMenu.edit_notification_name)
-    dp.register_message_handler(edit_notification_name, state=AccountMenu.get_notification_name)
-    dp.register_callback_query_handler(add_user_to_account_menu, lambda c: c.data == 'button_add_user_to_account')
-    dp.register_message_handler(add_user_to_account, state=AccountMenu.add_user)
-    dp.register_callback_query_handler(del_user_from_account_menu, lambda c: c.data == 'button_del_user_from_account')
-    dp.register_callback_query_handler(send_users_keyboard, lambda c: c.data == 'button_show_users', state='*')
-    dp.register_message_handler(del_user_from_account, state=AccountMenu.del_user)
+    try:
+        dp.register_callback_query_handler(send_notification_and_transition_account_menu,
+                                           lambda c: c.data == 'button_account_menu')
+        dp.register_callback_query_handler(send_account_control_menu, lambda c: c.data == 'button_account_menu_control')
+        dp.register_callback_query_handler(requests_notification_name_for_change,
+                                           lambda c: c.data == 'button_edit_notification_name')
+        dp.register_message_handler(response_notification_name, state=AccountMenu.edit_notification_name)
+        dp.register_message_handler(edit_notification_name, state=AccountMenu.get_notification_name)
+        dp.register_callback_query_handler(add_user_to_account_menu, lambda c: c.data == 'button_add_user_to_account')
+        dp.register_message_handler(add_user_to_account, state=AccountMenu.add_user)
+        dp.register_callback_query_handler(del_user_from_account_menu, lambda c: c.data == 'button_del_user_from_account')
+        dp.register_callback_query_handler(send_users_keyboard, lambda c: c.data == 'button_show_users', state='*')
+        dp.register_message_handler(del_user_from_account, state=AccountMenu.del_user)
+    except Exception as ex:
+        logging.error(f"Error while registering account menu handlers: {ex}")

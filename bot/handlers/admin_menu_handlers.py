@@ -2,6 +2,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 import re
+import logging
 
 from bot.utils import keyboards
 from bot.create_bot import bot
@@ -273,23 +274,26 @@ async def del_account_handler(message: types.Message):
 
 
 def register_admin_menu_handlers(dp: Dispatcher):
-    dp.register_message_handler(send_admin_menu, commands='admin')
-    dp.register_callback_query_handler(send_buy_requests, lambda c: c.data == 'button_show_requests')
-    dp.register_callback_query_handler(handle_approve_reject, lambda c: c.data in ('button_approved', 'button_reject'))
-    dp.register_callback_query_handler(send_account_subscribe_management_menu,
-                                       lambda c: c.data == 'button_account_management_menu')
-    dp.register_callback_query_handler(send_accounts_list, lambda c: c.data == 'button_show_accounts')
-    dp.register_callback_query_handler(management_account_menu_buttons_handler, lambda c: c.data in
-                                                                                          ('button_account_on',
-                                                                                           'button_account_off',
-                                                                                           'button_edit_account',
-                                                                                           'button_del_account'))
-    dp.register_message_handler(activate_account_handler, state=AdminMenu.activate_account)
-    dp.register_message_handler(deactivate_account_handler, state=AdminMenu.deactivate_account)
-    dp.register_message_handler(edit_account_handler, state=AdminMenu.edit_account)
-    dp.register_callback_query_handler(send_edit_account_change_type_menu,
-                                       lambda c: c.data == 'button_edit_subscription_type', state='*')
-    dp.register_message_handler(change_account_subscribe_type, state=AdminMenu.edit_account_choose_type)
-    dp.register_callback_query_handler(send_edit_expiration_date_menu, lambda c: c.data == 'button_edit_expiration_date',
-                                       state='*')
-    dp.register_message_handler(edit_expiration_date, state=AdminMenu.edit_account_expiration_date)
+    try:
+        dp.register_message_handler(send_admin_menu, commands='admin')
+        dp.register_callback_query_handler(send_buy_requests, lambda c: c.data == 'button_show_requests')
+        dp.register_callback_query_handler(handle_approve_reject, lambda c: c.data in ('button_approved', 'button_reject'))
+        dp.register_callback_query_handler(send_account_subscribe_management_menu,
+                                           lambda c: c.data == 'button_account_management_menu')
+        dp.register_callback_query_handler(send_accounts_list, lambda c: c.data == 'button_show_accounts')
+        dp.register_callback_query_handler(management_account_menu_buttons_handler, lambda c: c.data in
+                                                                                              ('button_account_on',
+                                                                                               'button_account_off',
+                                                                                               'button_edit_account',
+                                                                                               'button_del_account'))
+        dp.register_message_handler(activate_account_handler, state=AdminMenu.activate_account)
+        dp.register_message_handler(deactivate_account_handler, state=AdminMenu.deactivate_account)
+        dp.register_message_handler(edit_account_handler, state=AdminMenu.edit_account)
+        dp.register_callback_query_handler(send_edit_account_change_type_menu,
+                                           lambda c: c.data == 'button_edit_subscription_type', state='*')
+        dp.register_message_handler(change_account_subscribe_type, state=AdminMenu.edit_account_choose_type)
+        dp.register_callback_query_handler(send_edit_expiration_date_menu, lambda c: c.data == 'button_edit_expiration_date',
+                                           state='*')
+        dp.register_message_handler(edit_expiration_date, state=AdminMenu.edit_account_expiration_date)
+    except Exception as ex:
+        logging.error(f"Error while registering admin menu handlers: {ex}")
