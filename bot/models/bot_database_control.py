@@ -244,6 +244,16 @@ class BotDataBase:
                                   (message_notifications, purchase_notifications, other_notifications, user_id))
         await self.conn.commit()
 
+    # Получаем значения фильтров пользователя
+    async def get_filters_notifications(self, user_id):
+        await self.cursor.execute('''SELECT message_notifications, purchase_notifications, other_notifications
+                                     FROM authorized_users WHERE user_id = ?''', (user_id,))
+        filters = await self.cursor.fetchone()
+
+        if filters:
+            return filters
+        return False
+
     async def check_account_status(self, authorized_user_id):
         await self.cursor.execute('''SELECT email_login FROM authorized_users WHERE user_id = ?''', (authorized_user_id, ))
         email_login = await self.cursor.fetchone()
@@ -364,6 +374,15 @@ class BotDataBase:
         except Exception as e:
             print("Error:", e)
             return False
+
+    # Включаем или выключаем уведомление пользователя
+    async def switch_user_notification(self, notification_id, user_id):
+        mode = 1
+        if await self.check_user_notification_filtered(user_id, notification_id):
+            mode = 0
+        await self.cursor.execute('''UPDATE users_notifications SET is_filtered = ? WHERE notification_id = ?''',
+                                  (mode, notification_id))
+        await self.conn.commit()
 
     async def check_user_notification_filtered(self, user_id, notification_id):
         await self.cursor.execute(

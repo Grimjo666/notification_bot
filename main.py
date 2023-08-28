@@ -78,7 +78,19 @@ async def button_back_handler(callback_query: types.CallbackQuery, state: FSMCon
         await admin_menu_handlers.send_account_subscribe_management_menu(callback_query, state)
     elif menu == 'edit_account_menu':
         await admin_menu_handlers.edit_account_handler(callback_query.message)
+    elif menu == 'notification_menu':
+        await notification_menu_handlers.send_notification_menu(callback_query, state)
 
+
+@dp.callback_query_handler(lambda c: c.data == 'button_update', state='*')
+async def button_update_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    button_update = data.get('button_update')
+    try:
+        if button_update == 'notification_menu':
+            await notification_menu_handlers.send_notification_menu(callback_query, state)
+    except aiogram_exceptions.MessageNotModified:
+        pass
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
