@@ -71,6 +71,9 @@ async def button_back_handler(callback_query: types.CallbackQuery, state: FSMCon
         await admin_menu_handlers.edit_account_handler(callback_query.message)
     elif menu == 'notification_menu':
         await notification_menu_handlers.send_notification_menu(callback_query, state)
+    elif menu == 'group_notification_menu':
+        await state.update_data(already_exists=True)
+        await main_menu_handlers.send_chat_notifications_menu(callback_query.message, state)
 
 
 @dp.callback_query_handler(lambda c: c.data == 'button_update', state='*')
@@ -80,6 +83,9 @@ async def button_update_handler(callback_query: types.CallbackQuery, state: FSMC
     try:
         if button_update == 'notification_menu':
             await notification_menu_handlers.send_notification_menu(callback_query, state)
+        elif button_update == 'group_notification_menu':
+            await state.update_data(already_exists=True)
+            await main_menu_handlers.send_chat_notifications_menu(callback_query.message, state)
     except aiogram_exceptions.MessageNotModified:
         pass
 

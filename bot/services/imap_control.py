@@ -62,6 +62,7 @@ def get_new_message(email_address, email_pass) -> list:
             # Извлечение заголовка
             decoded_subject = decode_header(email_message['Subject'])[0]
             subject_text, encoding = decoded_subject
+            subject = ''
 
             if isinstance(subject_text, bytes):
                 subject = subject_text.decode(encoding or 'utf-8')

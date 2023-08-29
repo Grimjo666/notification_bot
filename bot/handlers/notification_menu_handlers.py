@@ -72,7 +72,6 @@ async def send_switch_notifications_buttons(callback_query: types.CallbackQuery,
 async def switch_notification_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
     email_login = data.get('email_login')
-    notification_menu_id = data.get('notification_menu_id')
     email_recipient, *_ = message.text.split(' | ')
 
     async with BotDataBase() as db:
@@ -80,7 +79,7 @@ async def switch_notification_handler(message: types.Message, state: FSMContext)
                                                        email_recipient=email_recipient)
 
         # переключаем уведомление
-        await db.switch_user_notification(user_id=message.from_user.id,
+        await db.switch_user_notification(user_id=message.chat.id,
                                           notification_id=notification_id)
     await message.answer('Переключено')
 
@@ -112,7 +111,7 @@ async def switch_filters(callback_query: types.CallbackQuery):
             elif callback_data == 'button_other_filter':
                 other_filter = int(not other_filter)
 
-            await db.switch_filters_notifications(user_id=user_id,
+            await db.switch_filters_notifications(user_id=callback_query.message.chat.id,
                                                   message_notifications=message_filter,
                                                   purchase_notifications=purchase_filter,
                                                   other_notifications=other_filter)

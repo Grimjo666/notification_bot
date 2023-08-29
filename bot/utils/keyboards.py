@@ -55,6 +55,8 @@ paid_subscription_menu.add(button_base_subscription,
                            button_main_menu,
                            button_close)
 
+
+
 account_menu = InlineKeyboardMarkup(row_width=1)
 
 button_edit_notification_name = InlineKeyboardButton('Изменить имя уведомления',
@@ -78,6 +80,11 @@ button_add_filters = InlineKeyboardButton('Добавить фильтры на 
 
 notification_menu.add(button_switch_notifications, button_add_filters,
                       button_main_menu, button_update, button_close)
+
+
+group_notifications_menu = InlineKeyboardMarkup(row_width=1)
+
+group_notifications_menu.add(button_switch_notifications, button_add_filters, button_update, button_close)
 
 
 switch_notification_filters_menu = InlineKeyboardMarkup(row_width=1)

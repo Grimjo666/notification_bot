@@ -143,7 +143,9 @@ async def edit_notification_name(message: types.Message, state: FSMContext):
 async def add_user_to_account_menu(callback_query: types.CallbackQuery):
     text = 'Введите ID пользователя, для которого вы хотите дать доступ к уведомлениям вашего аккаунта\n\n' \
            'Для того что бы узнать ID нужно что бы этот пользователь написал боту /start и нажал на кнопку ' \
-           '"Узнать свой ID", после этого попросите его сказать свой ID вам и отправьте его сообщением в этом меню'
+           '"Узнать свой ID", после этого попросите его сказать свой ID вам и отправьте его сообщением в этом меню\n' \
+           'Если вам нужно что бы бот работал в группе/чате. тогда добавьте бота группу/чат и отправьте ему' \
+           ' эту команду: /add_chat (команду надо отправлять в группу/чат где находится бот)'
 
     await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                 message_id=callback_query.message.message_id,
@@ -183,7 +185,6 @@ async def add_user_to_account(message: types.Message, state: FSMContext):
 # Добавляем чат в аккаунт
 async def add_chat_to_account(message: types.Message, state: FSMContext):
     chat_id = message.chat.id
-    await bot.delete_message(message_id=message.message_id, chat_id=message.chat.id)
 
     async with BotDataBase() as db:
         try:
@@ -192,7 +193,8 @@ async def add_chat_to_account(message: types.Message, state: FSMContext):
             if not email_login:
                 raise DBErrors('У вас нет доступа к боту, купите/продлите подписку')
             chat_info = await bot.get_chat(chat_id)
-            chat_name = chat_info.username
+            chat_name = chat_info.title
+
             await db.add_authorized_user(user_id=chat_id,
                                          user_name=chat_name,
                                          email_login=email_login,
@@ -230,9 +232,7 @@ async def del_user_from_account(message: types.Message):
     db_user_id, *other = message.text.split()
     user_name = ''.join(other).replace('|', '')
 
-    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-
-    if not db_user_id.isdigit():
+    if not db_user_id.isdigit() and not db_user_id.startswith('-'):
         await message.answer('Не корректный ID')
     elif db_user_id == message.from_user.id:
         await message.answer('Вы не можете удалить себя')

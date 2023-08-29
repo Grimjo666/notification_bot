@@ -333,7 +333,7 @@ class BotDataBase:
         return notifications
 
     async def get_email_login_by_user_id(self, user_id):
-        await self.cursor.execute('''SELECT email_login FROM bot_accounts WHERE user_id = ?''', (user_id,))
+        await self.cursor.execute('''SELECT email_login FROM authorized_users WHERE user_id = ?''', (user_id,))
         result = await self.cursor.fetchone()
         email_login = result[0]
 
