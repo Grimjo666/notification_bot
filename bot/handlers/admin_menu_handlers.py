@@ -295,5 +295,6 @@ def register_admin_menu_handlers(dp: Dispatcher):
         dp.register_callback_query_handler(send_edit_expiration_date_menu, lambda c: c.data == 'button_edit_expiration_date',
                                            state='*')
         dp.register_message_handler(edit_expiration_date, state=AdminMenu.edit_account_expiration_date)
+        dp.register_message_handler(del_account_handler, state=AdminMenu.del_account)
     except Exception as ex:
         logging.error(f"Error while registering admin menu handlers: {ex}")

@@ -19,10 +19,12 @@ main_menu = InlineKeyboardMarkup(row_width=1)
 button_subscribe_menu = InlineKeyboardButton('Подписка', callback_data='button_subscribe_menu')
 button_settings_menu = InlineKeyboardButton('Как настроить бота', callback_data='button_settings_menu')
 button_account_menu = InlineKeyboardButton('Аккаунт', callback_data='button_account_menu')
+button_send_user_id = InlineKeyboardButton('Узнать свой ID', callback_data='button_send_user_id')
 
 main_menu.add(button_subscribe_menu,
               button_settings_menu,
               button_account_menu,
+              button_send_user_id,
               button_close)
 
 free_subscription_menu = InlineKeyboardMarkup(row_width=1)

@@ -1,6 +1,8 @@
 import imaplib
 import email
 from bot import config
+import base64
+from email.header import decode_header
 
 
 def subject_filter(subject: str, message_notifications: int, purchase_notifications: int, other_notifications: int) -> bool:
@@ -54,11 +56,15 @@ def get_new_message(email_address, email_pass) -> list:
 
             sender = email_message['From']
 
-            # if 'fansly' not in sender.lower():
-            #     continue
+            if 'fansly' not in sender.lower():
+                continue
 
             # Извлечение заголовка
-            subject = email_message['Subject']
+            decoded_subject = decode_header(email_message['Subject'])[0]
+            subject_text, encoding = decoded_subject
+
+            if isinstance(subject_text, bytes):
+                subject = subject_text.decode(encoding or 'utf-8')
 
             if 'your code is' in subject.lower():
                 continue

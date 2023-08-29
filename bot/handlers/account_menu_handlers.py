@@ -180,6 +180,36 @@ async def add_user_to_account(message: types.Message, state: FSMContext):
         await message.answer('Не корректный ID')
 
 
+# Добавляем чат в аккаунт
+async def add_chat_to_account(message: types.Message, state: FSMContext):
+    chat_id = message.chat.id
+    await bot.delete_message(message_id=message.message_id, chat_id=message.chat.id)
+
+    async with BotDataBase() as db:
+        try:
+
+            email_login = await db.get_email_login_by_user_id(message.from_user.id)
+            if not email_login:
+                raise DBErrors('У вас нет доступа к боту, купите/продлите подписку')
+            chat_info = await bot.get_chat(chat_id)
+            chat_name = chat_info.username
+            await db.add_authorized_user(user_id=chat_id,
+                                         user_name=chat_name,
+                                         email_login=email_login,
+                                         is_chat=1)
+
+            await message.answer('Чат зарегистрирован')
+        except DBErrors as ex:
+            await message.answer(ex.message)
+        except IntegrityError:
+            await message.answer('У этого чата уже есть доступ')
+        except ChatNotFound:
+            await message.answer('Чата с таким ID не существует')
+        except Exception as ex:
+            print(type(ex), ex, 'Ошибка при добавлении нового чата')
+            await message.answer('Произошла ошибка')
+
+
 async def del_user_from_account_menu(callback_query: types.CallbackQuery):
     text = 'Введите ID пользователя или выберите его на клавиатуре для того что бы убрать доступ к боту'
     await bot.edit_message_text(chat_id=callback_query.message.chat.id,
@@ -223,6 +253,7 @@ def register_account_handlers(dp: Dispatcher):
         dp.register_message_handler(edit_notification_name, state=AccountMenu.get_notification_name)
         dp.register_callback_query_handler(add_user_to_account_menu, lambda c: c.data == 'button_add_user_to_account')
         dp.register_message_handler(add_user_to_account, state=AccountMenu.add_user)
+        dp.register_message_handler(add_chat_to_account, commands='add_chat')
         dp.register_callback_query_handler(del_user_from_account_menu, lambda c: c.data == 'button_del_user_from_account')
         dp.register_callback_query_handler(send_users_keyboard, lambda c: c.data == 'button_show_users', state='*')
         dp.register_message_handler(del_user_from_account, state=AccountMenu.del_user)

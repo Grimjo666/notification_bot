@@ -25,9 +25,8 @@ async def command_start(message: types.Message):
 
 async def send_main_menu(callback_query: types.CallbackQuery, state: FSMContext):
     text = "Привет! Я бот, созданный для отслеживания уведомлений с сайта Fansly. " \
-           "Я могу помочь тебе получать оповещения с твоих аккаунтов Fansly." \
-           "Бот может присылать уведомления сразу с большого количества аккаунтов\n" \
-           "Вызвать это меню можно по команде /start, /menu\n\n\n" \
+           "Я могу помочь тебе получать оповещения с твоих аккаунтов Fansly. " \
+           "Бот может присылать уведомления сразу с большого количества аккаунтов\n\n\n" \
            "Выбери одну из следующих опций:\n\n" \
            "|Подписка| - здесь ты можешь купить или продлить свою подписку на меня\n\n" \
            "|Как настроить бота| - здесь вся информация по настройке бота\n\n" \
@@ -40,9 +39,14 @@ async def send_main_menu(callback_query: types.CallbackQuery, state: FSMContext)
     await state.finish()
 
 
+async def send_user_id(callback_query: types.CallbackQuery):
+    await callback_query.message.answer(f'Ваш ID: {callback_query.from_user.id}')
+
+
 def register_main_menu_handlers(dp: Dispatcher):
     try:
         dp.register_message_handler(command_start, commands=['start', 'menu'])
         dp.register_callback_query_handler(send_main_menu, lambda c: c.data == 'button_main_menu', state='*')
+        dp.register_callback_query_handler(send_user_id, lambda c: c.data == 'button_send_user_id', state='*')
     except Exception as ex:
         logging.error(f"Error while registering main menu handlers: {ex}")

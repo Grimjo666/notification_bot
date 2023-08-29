@@ -156,7 +156,19 @@ class BotDataBase:
 
     # Удаляем аккаунт из базы данных
     async def del_bot_account(self, user_id):
-        await self.cursor.execute('''DELETE FROM bot_accounts WHERE user_id = ?''', (user_id,))
+        try:
+            email_login = await self.get_email_login_by_user_id(user_id)
+            await self.cursor.execute('''DELETE FROM bot_accounts WHERE user_id = ?''', (user_id,))
+            await self.cursor.execute('''DELETE FROM authorized_users WHERE email_login = ?''', (email_login,))
+            await self.cursor.execute('''DELETE FROM account_notifications WHERE email_login = ?''', (email_login,))
+            await self.cursor.execute('''DELETE FROM users_notifications WHERE user_id = ?''', (user_id,))
+            await self.conn.commit()
+            time = self.get_current_datetime()
+            print(f'Вся информация о пользователе: {user_id} успешно удалена {time}')
+
+        except Exception as ex:
+            await self.conn.rollback()
+            print(ex, 'Во время удаления пользователя')
         await self.conn.commit()
 
     # Получаем информацию об аккаунтах из бд
@@ -261,7 +273,8 @@ class BotDataBase:
             await self.cursor.execute('''SELECT subscription_status FROM bot_accounts WHERE email_login = ?''',
                                       (email_login[0],))
             status = await self.cursor.fetchone()
-            return status[0] == 'active'
+            if status:
+                return status[0] == 'active'
         return False
 
     # Добавляем email-уведомление в аккаунт

@@ -2,6 +2,7 @@ import asyncio
 import aiogram.utils.exceptions as aiogram_exceptions
 import logging
 
+
 from bot.services.imap_control import subject_filter
 from bot.create_bot import bot
 from bot.models.bot_database_control import BotDataBase, DBErrors
@@ -35,6 +36,7 @@ async def add_new_notification_and_send():
                                 # проверяем существует ли запись о уведомлении у пользователя
                                 if await db.check_user_notification_exist(notification_id=notification_id,
                                                                           user_id=authorized_user_id):
+
                                     # Применяем пользовательские фильтры к сообщениям
                                     if subject_filter(subject, message_notifications=messn,
                                                       purchase_notifications=purchn,
